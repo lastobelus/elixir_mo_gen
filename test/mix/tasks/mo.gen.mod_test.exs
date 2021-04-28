@@ -7,6 +7,7 @@ defmodule ElixirMoGenTest do
 
   setup do
     Mix.Task.clear()
+    Application.put_env(:mo_gen, :ignore_paths, nil)
     :ok
   end
 
@@ -60,6 +61,22 @@ defmodule ElixirMoGenTest do
 
       in_tmp_project(config.test, fn ->
         Gen.Mod.run(~w(some/namespace/not_this/or_this/new_module))
+
+        assert_file("lib/some/namespace/not_this/or_this/new_module.ex", fn file ->
+          assert file =~ "defmodule Some.Namespace.NewModule do"
+        end)
+
+        assert_file("test/some/namespace/not_this/or_this/new_module_test.exs", fn file ->
+          assert file =~ "defmodule Some.Namespace.NewModuleTest do"
+        end)
+      end)
+    end
+
+    test "ignores paths passed with --ignore_paths", config do
+      in_tmp_project(config.test, fn ->
+        Gen.Mod.run(
+          ~w(some/namespace/not_this/or_this/new_module --ignore_paths not_this --ignore_paths or_this)
+        )
 
         assert_file("lib/some/namespace/not_this/or_this/new_module.ex", fn file ->
           assert file =~ "defmodule Some.Namespace.NewModule do"
