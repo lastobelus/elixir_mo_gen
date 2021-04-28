@@ -75,7 +75,7 @@ defmodule ElixirMoGenTest do
     test "ignores paths passed with --ignore_paths", config do
       in_tmp_project(config.test, fn ->
         Gen.Mod.run(
-          ~w(some/namespace/not_this/or_this/new_module --ignore_paths not_this --ignore_paths or_this)
+          ~w(some/namespace/not_this/or_this/new_module --ignore-paths not_this --ignore-paths or_this)
         )
 
         assert_file("lib/some/namespace/not_this/or_this/new_module.ex", fn file ->
@@ -94,12 +94,12 @@ defmodule ElixirMoGenTest do
       in_tmp_phx_project(config.test, fn ->
         Gen.Mod.run(~w(elixir_mo_gen_web/controllers/new_controller))
 
-        assert_file("lib/elixir_mo_gen_web/controllers/new_controller", fn file ->
-          assert file =~ "defmodule ElixirMoGen.NewController do"
+        assert_file("lib/elixir_mo_gen_web/controllers/new_controller.ex", fn file ->
+          assert file =~ "defmodule ElixirMoGenWeb.NewController do"
         end)
 
         assert_file("test/elixir_mo_gen_web/controllers/new_controller_test.exs", fn file ->
-          assert file =~ "defmodule ElixirMoGen.NewControllerTest do"
+          assert file =~ "defmodule ElixirMoGenWeb.NewControllerTest do"
         end)
       end)
     end

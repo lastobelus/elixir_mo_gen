@@ -11,7 +11,8 @@ defmodule ElixirMoGen do
 
   def phoenix_project? do
     file = File.read!("mix.exs")
-    Regex.match?(~r/defp deps .*\{ *:phoenix,/m, file)
+
+    Regex.match?(~r/defp deps .*\[.*\{ *:phoenix,/s, file)
   end
 
   def inflect(path), do: inflect(path, [])
@@ -69,6 +70,9 @@ defmodule ElixirMoGen do
 
       is_binary(configured_paths) ->
         String.split(configured_paths, ~r/ *, */)
+
+      true ->
+        []
     end
   end
 

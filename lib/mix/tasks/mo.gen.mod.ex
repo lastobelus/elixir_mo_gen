@@ -3,8 +3,7 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
 
   use Mix.Task
 
-  @switches [ignore_paths: :keep]
-
+  @switches [ignore_paths: [:string, :keep]]
   @doc false
   def run(args) do
     IO.puts("args: #{inspect(args)}")
@@ -18,6 +17,7 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
   end
 
   defp parse_opts!(args) do
+    IO.puts("args: #{inspect(args)}")
     {opts, modules} = OptionParser.parse!(args, strict: @switches, aliases: [i: :ignore_paths])
 
     ignore_paths =
