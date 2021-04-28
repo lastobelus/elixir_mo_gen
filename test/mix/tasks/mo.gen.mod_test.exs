@@ -92,16 +92,14 @@ defmodule ElixirMoGenTest do
   describe "phoenix" do
     test "does not add standard ignore paths to namespace", config do
       in_tmp_phx_project(config.test, fn ->
-        Gen.Mod.run(~w(some/namespace/new_module))
+        Gen.Mod.run(~w(elixir_mo_gen_web/controllers/new_controller))
 
-        assert_file("lib/some/namespace/new_module.ex", fn file ->
-          IO.puts("file:\n #{file}")
-          assert file =~ "defmodule Some.Namespace.NewModule do"
+        assert_file("lib/elixir_mo_gen_web/controllers/new_controller", fn file ->
+          assert file =~ "defmodule ElixirMoGen.NewController do"
         end)
 
-        assert_file("test/some/namespace/new_module_test.exs", fn file ->
-          IO.puts("file:\n #{file}")
-          assert file =~ "defmodule Some.Namespace.NewModuleTest do"
+        assert_file("test/elixir_mo_gen_web/controllers/new_controller_test.exs", fn file ->
+          assert file =~ "defmodule ElixirMoGen.NewControllerTest do"
         end)
       end)
     end
