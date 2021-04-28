@@ -12,6 +12,7 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     {ignore_paths, modules} = parse_opts!(args)
 
     ignore_paths = ElixirMoGen.get_ignore_paths(ignore_paths)
+    IO.puts("ignore_paths: #{inspect(ignore_paths)}")
 
     Enum.each(modules, fn module -> generate_module(module, ignore_paths) end)
   end
@@ -30,7 +31,7 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
   defp generate_module(module, ignore_paths) do
     assigns =
       module
-      |> ElixirMoGen.inflect([])
+      |> ElixirMoGen.inflect(ignore_paths)
       |> IO.inspect(label: "assigns")
       |> Keyword.put(:use_statements, [])
 

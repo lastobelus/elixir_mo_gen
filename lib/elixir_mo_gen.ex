@@ -46,15 +46,29 @@ defmodule ElixirMoGen do
   def get_ignore_paths(paths) do
     has_paths = !Enum.empty?(paths)
 
+    config_ignore_paths() ++
+      cond do
+        has_paths ->
+          paths
+
+        phoenix_project?() ->
+          @phoenix_ignore_paths
+
+        true ->
+          []
+      end
+  end
+
+  defp config_ignore_paths() do
+    configured_paths = Application.get_env(:mo_gen, :ignore_paths, [])
+    IO.puts("configured_paths: #{inspect(configured_paths)}")
+
     cond do
-      has_paths ->
-        paths
+      is_list(configured_paths) ->
+        configured_paths
 
-      phoenix_project?() ->
-        @phoenix_ignore_paths
-
-      true ->
-        []
+      is_binary(configured_paths) ->
+        String.split(configured_paths, ~r/ *, */)
     end
   end
 
