@@ -1,38 +1,68 @@
 defmodule Mix.Tasks.Mo.Gen.Mod do
-  @moduledoc false
+  @moduledoc """
+  Creates a new Elixir module and associated test file.
+
+  It expects the lib-local path of the module as an argument(s):
+
+      mix mo.gen.mod some/namespace/new_module
+
+  It can create multiple modules/tests:
+
+      mix mo.gen.mod first/module second/module
+
+  When used in a Phoenix app (detected by inspecting mix.exs deps function
+  for a reference to `:phoenix`, or by passing --phoenix or --no-phoenix)
+  it will omit standard phoenix ignored paths (controllers, channels, views)
+  from the fully-qualified module name.
+
+  You can also pass your own paths to ignore in module names with one or more
+  `--template some_path` options, or in your app config/dev.exs:
+
+     config :mo_gen, ignore_paths: ~w(some paths_to_ignore)
+  """
 
   use Mix.Task
 
-  @switches [ignore_paths: [:string, :keep]]
+  @shortdoc "Creates a new Elixir module and associated test file."
+
+  @switches [ignore_paths: [:string, :keep], phoenix: :boolean, quiet: :boolean]
   @doc false
+  @impl true
+  def run([version]) when version in ~w(-v --version) do
+    ElixirMoGen.print_version_banner("mo.gen.mod")
+  end
+
   def run(args) do
-    IO.puts("args: #{inspect(args)}")
+    {ignore_paths, phoenix, quiet, modules} = parse_opts!(args)
 
-    {ignore_paths, modules} = parse_opts!(args)
+    unless quiet do
+      ElixirMoGen.print_version_banner("mo.gen.mod")
+    end
 
-    ignore_paths = ElixirMoGen.get_ignore_paths(ignore_paths)
-    IO.puts("ignore_paths: #{inspect(ignore_paths)}")
+    ignore_paths = ElixirMoGen.get_ignore_paths(ignore_paths, phoenix)
 
     Enum.each(modules, fn module -> generate_module(module, ignore_paths) end)
   end
 
   defp parse_opts!(args) do
-    IO.puts("args: #{inspect(args)}")
-    {opts, modules} = OptionParser.parse!(args, strict: @switches, aliases: [i: :ignore_paths])
+    {opts, modules} =
+      OptionParser.parse!(args, strict: @switches, aliases: [i: :ignore_paths, q: :quiet])
 
     ignore_paths =
       opts
       |> Keyword.get_values(:ignore_paths)
       |> Enum.reduce([], fn p, paths -> paths ++ String.split(p, ",") end)
 
-    {ignore_paths, modules}
+    is_phoenix = Keyword.get(opts, :phoenix)
+    quiet = Keyword.get(opts, :quiet)
+
+    {ignore_paths, is_phoenix, quiet, modules}
   end
 
   defp generate_module(module, ignore_paths) do
     assigns =
       module
       |> ElixirMoGen.inflect(ignore_paths)
-      |> IO.inspect(label: "assigns")
       |> Keyword.put(:use_statements, [])
 
     paths = ElixirMoGen.generator_paths()

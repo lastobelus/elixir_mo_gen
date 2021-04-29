@@ -4,6 +4,7 @@ defmodule ElixirMoGen do
   """
 
   @phoenix_ignore_paths ~w(channels controllers live views)
+  @version Mix.Project.config()[:version]
 
   def generator_paths do
     [".", :elixir_mo_gen]
@@ -44,7 +45,9 @@ defmodule ElixirMoGen do
     ]
   end
 
-  def get_ignore_paths(paths) do
+  def get_ignore_paths(paths, nil), do: get_ignore_paths(paths, phoenix_project?())
+
+  def get_ignore_paths(paths, is_phoenix) do
     has_paths = !Enum.empty?(paths)
 
     config_ignore_paths() ++
@@ -52,7 +55,7 @@ defmodule ElixirMoGen do
         has_paths ->
           paths
 
-        phoenix_project?() ->
+        is_phoenix ->
           @phoenix_ignore_paths
 
         true ->
@@ -62,7 +65,6 @@ defmodule ElixirMoGen do
 
   defp config_ignore_paths() do
     configured_paths = Application.get_env(:mo_gen, :ignore_paths, [])
-    IO.puts("configured_paths: #{inspect(configured_paths)}")
 
     cond do
       is_list(configured_paths) ->
@@ -118,6 +120,20 @@ defmodule ElixirMoGen do
           end
       end
     end
+  end
+
+  def print_version_banner(task) do
+    text = purple(" ++ Elixir Mo' Gen v#{@version} ++ " <> dark_symbol(" #{task} "))
+
+    IO.puts(text)
+  end
+
+  defp purple(text) do
+    IO.ANSI.color_background(53) <> IO.ANSI.color(97) <> text <> IO.ANSI.reset()
+  end
+
+  defp dark_symbol(text) do
+    IO.ANSI.color_background(16) <> IO.ANSI.color(238) <> text <> IO.ANSI.reset()
   end
 
   defp to_app_source(path, source_dir) when is_binary(path),
