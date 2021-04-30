@@ -1,6 +1,6 @@
 Code.require_file("../../mix_helper.exs", __DIR__)
 
-defmodule ElixirMoGenTest do
+defmodule Mix.Tasks.Mo.Gen.ModTest do
   use ExUnit.Case
   import MixHelper
   alias Mix.Tasks.Mo.Gen
@@ -43,6 +43,20 @@ defmodule ElixirMoGenTest do
 
       assert_file("test/other/other_module_test.exs", fn file ->
         assert file =~ "defmodule Other.OtherModuleTest do"
+      end)
+    end)
+  end
+
+  test "handles names with dots like mo.gen.mod", config do
+    in_tmp_project(config.test, fn ->
+      Gen.Mod.run(~w(some/namespace/mo.gen.mod -q))
+
+      assert_file("lib/some/namespace/mo.gen.mod.ex", fn file ->
+        assert file =~ "defmodule Some.Namespace.Mo.Gen.Mod do"
+      end)
+
+      assert_file("test/some/namespace/mo.gen.mod_test.exs", fn file ->
+        assert file =~ "defmodule Some.Namespace.Mo.Gen.ModTest do"
       end)
     end)
   end

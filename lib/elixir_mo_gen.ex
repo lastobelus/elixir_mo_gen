@@ -91,8 +91,15 @@ defmodule ElixirMoGen do
   defp path_parts_to_module(parts, ignore_paths) do
     parts
     |> Enum.reject(fn part -> Enum.member?(ignore_paths, part) end)
-    |> Enum.map(fn part -> ElixirMoGen.Naming.camelize(part) end)
+    |> Enum.map(fn part -> camelize_path_part(part) end)
     |> Module.concat()
+  end
+
+  defp camelize_path_part(part) do
+    part
+    |> String.split(".")
+    |> Enum.map(&ElixirMoGen.Naming.camelize/1)
+    |> Enum.join(".")
   end
 
   def copy_from(apps, source_dir, binding, mapping) when is_list(mapping) do
