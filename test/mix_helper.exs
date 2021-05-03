@@ -176,4 +176,19 @@ defmodule MixHelper do
       0 -> :ok
     end
   end
+
+  def inspect_app_dir(also \\ nil) do
+    IO.puts("----------------------------------------------")
+    IO.puts("File.cwd!(): #{inspect(File.cwd!())}")
+    IO.puts("File.ls!(): #{inspect(File.ls!())}")
+
+    if also do
+      IO.puts("File.ls!(#{also}): #{inspect(File.ls!(also))}")
+    else
+      System.cmd("tree", [])
+    end
+
+    # hi
+    IO.puts("----------------------------------------------")
+  end
 end
