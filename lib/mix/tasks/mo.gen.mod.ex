@@ -29,15 +29,13 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
   @doc false
   @impl true
   def run([version]) when version in ~w(-v --version) do
-    ElixirMoGen.print_version_banner("mo.gen.mod")
+    ElixirMoGen.print_version_banner("mo.gen.mod", [])
   end
 
   def run(args) do
     {ignore_paths, phoenix, quiet, modules} = parse_opts!(args)
 
-    unless quiet do
-      ElixirMoGen.print_version_banner("mo.gen.mod")
-    end
+    ElixirMoGen.print_version_banner("mo.gen.mod", quiet: quiet)
 
     ignore_paths = ElixirMoGen.get_ignore_paths(ignore_paths, phoenix)
 

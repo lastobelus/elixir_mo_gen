@@ -3,6 +3,7 @@ Code.require_file("../../mix_helper.exs", __DIR__)
 defmodule Mix.Tasks.Mo.Gen.ModTest do
   use ExUnit.Case
   import MixHelper
+  import ExUnit.CaptureIO
   alias Mix.Tasks.Mo.Gen
 
   setup do
@@ -135,6 +136,19 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
         assert_file("test/elixir_mo_gen_web/controllers/new_controller_test.exs", fn file ->
           assert file =~ "defmodule ElixirMoGenWeb.NewControllerTest do"
         end)
+      end)
+    end
+  end
+
+  describe "generated tests" do
+    test "the generated test runs, and flunks", config do
+      in_tmp_project(config.test, fn ->
+        Gen.Mod.run(~w(some/namespace/new_module -q))
+
+        {output, exit_status} = System.cmd("mix", ~w(test))
+        assert exit_status == 1
+        assert output =~ ~S/code: flunk("no tests for #{Some.Namespace.NewModule} yet!")/
+        assert output =~ "1 test, 1 failure"
       end)
     end
   end

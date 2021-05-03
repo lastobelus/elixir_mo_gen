@@ -35,7 +35,7 @@ defmodule MixHelper do
   end
 
   def in_tmp_phx_project(test, func) do
-    app = :elixir_mo_gen_test
+    app = :<%= test_app_name %>
 
     in_tmp_project(test, fn ->
       File.write!("mix.exs", mixfile_contents(app, true))
@@ -46,18 +46,18 @@ defmodule MixHelper do
 
   def in_tmp_live_umbrella_project(test, func) do
     in_tmp_umbrella_project(test, fn ->
-      File.mkdir_p!("elixir_mo_gen/lib")
-      File.mkdir_p!("elixir_mo_gen_web/lib")
-      File.touch!("elixir_mo_gen/lib/elixir_mo_gen.ex")
-      File.touch!("elixir_mo_gen_web/lib/elixir_mo_gen_web.ex")
+      File.mkdir_p!("<%= app_name %>/lib")
+      File.mkdir_p!("<%= app_name %>_web/lib")
+      File.touch!("<%= app_name %>/lib/<%= app_name %>.ex")
+      File.touch!("<%= app_name %>_web/lib/<%= app_name %>_web.ex")
       func.()
     end)
   end
 
   def in_tmp_project(which, function) do
-    conf_before = Application.get_env(:elixir_mo_gen, :generators) || []
+    conf_before = Application.get_env(:<%= app_name %>, :generators) || []
     path = Path.join([tmp_path(), random_string(10), to_string(which)])
-    app = :elixir_mo_gen_test
+    app = :<%= test_app_name %>
 
     try do
       File.rm_rf!(path)
@@ -72,12 +72,12 @@ defmodule MixHelper do
       end)
     after
       File.rm_rf!(path)
-      Application.put_env(:elixir_mo_gen, :generators, conf_before)
+      Application.put_env(:<%= app_name %>, :generators, conf_before)
     end
   end
 
   def in_tmp_umbrella_project(which, function) do
-    conf_before = Application.get_env(:elixir_mo_gen, :generators) || []
+    conf_before = Application.get_env(:<%= app_name %>, :generators) || []
     path = Path.join([tmp_path(), random_string(10), to_string(which)])
 
     try do
@@ -95,7 +95,7 @@ defmodule MixHelper do
 
       File.cd!(apps_path, function)
     after
-      Application.put_env(:elixir_mo_gen, :generators, conf_before)
+      Application.put_env(:<%= app_name %>, :generators, conf_before)
       File.rm_rf!(path)
     end
   end
@@ -138,12 +138,12 @@ defmodule MixHelper do
   end
 
   def with_generator_env(new_env, fun) do
-    Application.put_env(:elixir_mo_gen, :generators, new_env)
+    Application.put_env(:<%= app_name %>, :generators, new_env)
 
     try do
       fun.()
     after
-      Application.delete_env(:elixir_mo_gen, :generators)
+      Application.delete_env(:<%= app_name %>, :generators)
     end
   end
 
