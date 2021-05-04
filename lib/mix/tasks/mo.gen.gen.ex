@@ -4,28 +4,28 @@ defmodule Mix.Tasks.Mo.Gen.Gen do
 
   It expects the lib-local path of the generator module as an argument(s):
 
-      mix mo.gen.mod mix/tasks/my.gen.widget
+      mix mo.gen.gen mix/tasks/my.gen.widget
 
   It will add mix/tasks if omitted, so all of the following are equivalent:
 
-      mix mo.gen.mod lib/mix/tasks/my.gen.widget
-      mix mo.gen.mod mix/tasks/my.gen.widget
-      mix mo.gen.mod my.gen.widget
+      mix mo.gen.gen lib/mix/tasks/my.gen.widget
+      mix mo.gen.gen mix/tasks/my.gen.widget
+      mix mo.gen.gen my.gen.widget
 
 
   It can create multiple modules/tests:
 
-      mix mo.gen.mod first/module second/module
+      mix mo.gen.gen first/module second/module
 
-  When used in a Phoenix app (detected by inspecting mix.exs deps function
-  for a reference to `:phoenix`, or by passing --phoenix or --no-phoenix)
-  it will omit standard phoenix ignored paths (controllers, channels, views)
-  from the fully-qualified module name.
+  ## Options
 
-  You can also pass your own paths to ignore in module names with one or more
-  `--template some_path` options, or in your app config/dev.exs:
+  - `--quiet (-q)`: don't print banner or generator output
+  - `--clean (-d)`: delete files this generator creates.
+    On OS X it will ask if the file birth-time and modified-time are different, but
+    if you said `No` to overwrite for that file it will potentially still be deleted.
+  - `--version (-v)`: print the version
 
-     config :mo_gen, ignore_paths: ~w(some paths_to_ignore)
+
   """
 
   use Mix.Task
