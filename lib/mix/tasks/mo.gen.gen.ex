@@ -36,17 +36,13 @@ defmodule Mix.Tasks.Mo.Gen.Gen do
   @doc false
   @impl true
   def run([version]) when version in ~w(-v --version) do
-    ElixirMoGen.print_version_banner("mo.gen.mod", [])
+    ElixirMoGen.print_version_banner("mo.gen.gen", [])
   end
 
   def run(args) do
     {opts, modules} = parse_opts!(args)
 
-    IO.puts("yo")
-    IO.inspect(opts, label: "opts")
-    IO.inspect(modules, label: "modules")
-
-    ElixirMoGen.print_version_banner("mo.gen.mod", opts)
+    ElixirMoGen.print_version_banner("mo.gen.gen", opts)
 
     ignore_paths = ElixirMoGen.get_ignore_paths(opts[:ignore_paths], opts[:phoenix])
 
@@ -88,7 +84,6 @@ defmodule Mix.Tasks.Mo.Gen.Gen do
     assigns =
       module
       |> ElixirMoGen.inflect(ignore_paths, true)
-      |> IO.inspect(label: "inflected:")
       |> Keyword.put(:use_statements, [])
 
     paths = ElixirMoGen.generator_paths()

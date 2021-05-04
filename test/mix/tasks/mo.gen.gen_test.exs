@@ -16,9 +16,7 @@ defmodule Mix.Tasks.Mo.Gen.GenTest do
     @tag capture_log: true
     test "generates module and test file", config do
       in_tmp_project(config.test, fn ->
-        Gen.Gen.run(~w(my.gen.example))
-
-        inspect_app_dir()
+        Gen.Gen.run(~w(my.gen.example -q))
 
         assert_file("lib/mix/tasks/my.gen.example.ex", fn file ->
           assert file =~ "defmodule Mix.Tasks.My.Gen.Example do"
