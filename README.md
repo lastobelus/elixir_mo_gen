@@ -18,6 +18,9 @@ migrations with the forms:
   - `add_unique_index_to_TABLES [col1,col2]`
   - `remove_example_from_TABLES example:string`
   - `remove_index_from_TABLES [col1,col2]`
+- add --template option to `mo.gen.mod` which will create an associated `.html.leex` template
+- add --use option to `mo.gen.mod` that adds `use MyAppWeb, :foo` where foo can be any public function in the MyAppWeb module
+- understand `w-/` and `a-/` aliases, that expand to `lib/my_app_web` and `lib/my_app` respectively
 
 ## Installation
 
