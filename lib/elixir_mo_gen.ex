@@ -12,7 +12,6 @@ defmodule ElixirMoGen do
 
   def phoenix_project? do
     file = File.read!("mix.exs")
-
     Regex.match?(~r/defp deps .*\[.*\{ *:phoenix,/s, file)
   end
 
@@ -66,8 +65,9 @@ defmodule ElixirMoGen do
   end
 
   def get_ignore_paths(paths, nil), do: get_ignore_paths(paths, phoenix_project?())
+  def get_ignore_paths(nil, is_phoenix), do: get_ignore_paths([], is_phoenix)
 
-  def get_ignore_paths(paths, is_phoenix) do
+  def get_ignore_paths(paths, is_phoenix) when is_list(paths) do
     has_paths = !Enum.empty?(paths)
 
     config_ignore_paths() ++
@@ -82,6 +82,9 @@ defmodule ElixirMoGen do
           []
       end
   end
+
+  def get_ignore_path(path, is_phoenix) when not is_list(path),
+    do: get_ignore_paths([path], is_phoenix)
 
   defp config_ignore_paths() do
     configured_paths = Application.get_env(:mo_gen, :ignore_paths, [])

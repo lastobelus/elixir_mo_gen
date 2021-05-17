@@ -145,8 +145,9 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
       in_tmp_project(config.test, fn ->
         Gen.Mod.run(~w(some/namespace/new_module -q))
 
-        {output, exit_status} = System.cmd("mix", ~w(test))
-        assert exit_status == 1
+        {mix_test_status, output} = run_mix_test(config.test)
+
+        assert mix_test_status == :error, "`mix test` should have flunked"
         assert output =~ ~S/code: flunk("no tests for #{Some.Namespace.NewModule} yet!")/
         assert output =~ "1 test, 1 failure"
       end)

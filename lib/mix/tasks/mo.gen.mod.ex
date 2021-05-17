@@ -25,7 +25,13 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
 
   @shortdoc "Creates a new Elixir module and associated test file."
 
-  @switches [ignore_paths: [:string, :keep], phoenix: :boolean, quiet: :boolean]
+  @switches [
+    ignore_paths: [:string, :keep],
+    phoenix: :boolean,
+    quiet: :boolean,
+    template: :boolean,
+    use: [:string]
+  ]
   @doc false
   @impl true
   def run([version]) when version in ~w(-v --version) do
@@ -33,11 +39,17 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
   end
 
   def run(args) do
-    {ignore_paths, phoenix, quiet, modules} = parse_opts!(args)
+    {opts, modules} = parse_opts!(args)
 
+    quiet = Keyword.get(opts, :quiet)
     ElixirMoGen.print_version_banner("mo.gen.mod", quiet: quiet)
 
-    ignore_paths = ElixirMoGen.get_ignore_paths(ignore_paths, phoenix)
+    is_phoenix = Keyword.get(opts, :phoenix, nil)
+
+    ignore_paths =
+      opts
+      |> Keyword.get(:ignore_paths)
+      |> ElixirMoGen.get_ignore_paths(is_phoenix)
 
     Enum.each(modules, fn module -> generate_module(module, ignore_paths) end)
   end
@@ -51,10 +63,9 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
       |> Keyword.get_values(:ignore_paths)
       |> Enum.reduce([], fn p, paths -> paths ++ String.split(p, ",") end)
 
-    is_phoenix = Keyword.get(opts, :phoenix)
-    quiet = Keyword.get(opts, :quiet)
+    opts = Keyword.replace(opts, :ignore_paths, ignore_paths)
 
-    {ignore_paths, is_phoenix, quiet, modules}
+    {opts, modules}
   end
 
   defp generate_module(module, ignore_paths) do
