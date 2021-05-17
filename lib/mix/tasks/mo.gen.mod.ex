@@ -32,6 +32,13 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     template: :boolean,
     use: [:string]
   ]
+
+  @aliases [
+    i: :ignore_paths,
+    q: :quiet,
+    p: :phoenix,
+    t: :template
+  ]
   @doc false
   @impl true
   def run([version]) when version in ~w(-v --version) do
@@ -51,12 +58,11 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
       |> Keyword.get(:ignore_paths)
       |> ElixirMoGen.get_ignore_paths(is_phoenix)
 
-    Enum.each(modules, fn module -> generate_module(module, ignore_paths) end)
+    Enum.each(modules, fn module -> generate_module(module, ignore_paths, opts) end)
   end
 
   defp parse_opts!(args) do
-    {opts, modules} =
-      OptionParser.parse!(args, strict: @switches, aliases: [i: :ignore_paths, q: :quiet])
+    {opts, modules} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
 
     ignore_paths =
       opts
@@ -68,7 +74,7 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     {opts, modules}
   end
 
-  defp generate_module(module, ignore_paths) do
+  defp generate_module(module, ignore_paths, opts) do
     assigns =
       module
       |> ElixirMoGen.inflect(ignore_paths)
@@ -76,11 +82,19 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
 
     paths = ElixirMoGen.generator_paths()
 
-    files = [
-      {:eex, "module.ex", assigns[:module_path]},
-      {:eex, "test.exs", assigns[:test_path]}
-    ]
+    files =
+      [
+        {:eex, "module.ex", assigns[:module_path]},
+        {:eex, "test.exs", assigns[:test_path]}
+      ] ++ template_files(assigns, opts[:template])
 
     ElixirMoGen.copy_from(paths, "priv/templates/mo.gen.mod", assigns, files)
+  end
+
+  defp template_files(_assigns, false), do: []
+  defp template_files(_assigns, nil), do: []
+
+  defp template_files(assigns, true) do
+    [{:new_eex, "template.html.leex", assigns[:template_path]}]
   end
 end

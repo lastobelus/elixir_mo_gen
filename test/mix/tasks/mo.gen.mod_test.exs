@@ -122,6 +122,16 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
         end)
       end)
     end
+
+    test "it creates a template when --template is true", config do
+      in_tmp_project(config.test, fn ->
+        Gen.Mod.run(~w(some/namespace/new_module -t -q))
+
+        assert_file("lib/some/namespace/new_module.html.leex", fn file ->
+          assert file =~ "<!-- Some.Namespace.NewModule -->"
+        end)
+      end)
+    end
   end
 
   describe "phoenix" do

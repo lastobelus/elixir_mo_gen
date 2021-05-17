@@ -30,6 +30,7 @@ defmodule ElixirMoGen do
     module_filename = app_name <> ".ex"
     test_app_name = app_name <> "_test"
     module_path = Path.join(lib_dir, module_filename)
+    template_path = Path.join(lib_dir, app_name <> ".html.leex")
 
     test_root = "test"
     test_dir = Path.join([test_root] ++ namespace_parts)
@@ -60,7 +61,8 @@ defmodule ElixirMoGen do
       test_relative_root: test_relative_root,
       once_removed_alias: once_removed_alias,
       test_app_name: test_app_name,
-      app_name: app_name
+      app_name: app_name,
+      template_path: template_path
     ]
   end
 
