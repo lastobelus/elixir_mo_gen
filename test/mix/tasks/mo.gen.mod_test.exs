@@ -3,7 +3,6 @@ Code.require_file("../../mix_helper.exs", __DIR__)
 defmodule Mix.Tasks.Mo.Gen.ModTest do
   use ExUnit.Case
   import MixHelper
-  import ExUnit.CaptureIO
   alias Mix.Tasks.Mo.Gen
 
   setup do

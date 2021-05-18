@@ -40,17 +40,6 @@ defmodule MixHelper do
     end
   end
 
-  def in_generated_phoenix_live_project(test, func) do
-    in_tmp_project(test, fn ->
-      send(self(), {:mix_shell_input, :yes?, false})
-      Mix.Tasks.Phx.New.run(~w(#{@app_name} --live))
-
-      File.cd!(to_string(@app_name), fn ->
-        func.()
-      end)
-    end)
-  end
-
   def in_tmp_phx_project(test, func, deps \\ [:phoenix]) do
     app = @test_app_name
 
@@ -287,7 +276,7 @@ defmodule MixHelper do
   def run_mix_test(test, opts \\ []) do
     log("compiling tmp_project for `#{test}`...", opts)
 
-    {output, exit_status} = System.cmd("mix", ~w(test), stderr_to_stdout: true)
+    {output, _exit_status} = System.cmd("mix", ~w(test), stderr_to_stdout: true)
     log("output:\n#{output}", opts)
     [deps_build_output | test_output] = String.split(output, "==> #{@test_app_name}\nCompiling")
 
