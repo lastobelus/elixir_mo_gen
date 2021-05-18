@@ -37,7 +37,8 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     i: :ignore_paths,
     q: :quiet,
     p: :phoenix,
-    t: :template
+    t: :template,
+    u: :use
   ]
   @doc false
   @impl true

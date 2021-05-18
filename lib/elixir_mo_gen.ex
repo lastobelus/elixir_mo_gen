@@ -26,11 +26,13 @@ defmodule ElixirMoGen do
 
     namespace_parts = Enum.slice(parts, 1..-2)
     lib_dir = Path.join(Enum.slice(parts, 0..-2))
-    app_name = List.last(parts)
-    module_filename = app_name <> ".ex"
+    file_base_name = List.last(parts)
+    app_name = to_string(otp_app())
+
+    module_filename = file_base_name <> ".ex"
     test_app_name = app_name <> "_test"
     module_path = Path.join(lib_dir, module_filename)
-    template_path = Path.join(lib_dir, app_name <> ".html.leex")
+    template_path = Path.join(lib_dir, file_base_name <> ".html.leex")
 
     test_root = "test"
     test_dir = Path.join([test_root] ++ namespace_parts)
@@ -62,8 +64,11 @@ defmodule ElixirMoGen do
       once_removed_alias: once_removed_alias,
       test_app_name: test_app_name,
       app_name: app_name,
+      # app_name_otp: app_name_otp,
       template_path: template_path
     ]
+
+    # |> IO.inspect(label: "inflect")
   end
 
   def get_ignore_paths(paths, nil), do: get_ignore_paths(paths, phoenix_project?())
@@ -310,4 +315,47 @@ defmodule ElixirMoGen do
       {:error, "can't find file"}
     end
   end
+
+  # region [ copied from phoenix: lib/mix/phoenix.ex ]
+  def base do
+    app_base(otp_app())
+  end
+
+  @doc """
+  Returns the context module base name based on the configuration value.
+
+      config :my_app
+        namespace: My.App
+
+  """
+  def context_base(ctx_app) do
+    app_base(ctx_app)
+  end
+
+  defp app_base(app) do
+    case Application.get_env(app, :namespace, app) do
+      ^app -> app |> to_string() |> ElixirMoGen.Naming.camelize()
+      mod -> mod |> inspect()
+    end
+  end
+
+  @doc """
+  Returns the OTP app from the Mix project configuration.
+  """
+  def otp_app do
+    Mix.Project.config() |> Keyword.fetch!(:app)
+  end
+
+  @doc """
+  Returns the web module prefix.
+  """
+  def web_module(base) do
+    if base |> to_string() |> String.ends_with?("Web") do
+      Module.concat([base])
+    else
+      Module.concat(["#{base}Web"])
+    end
+  end
+
+  # endregion [ copied from phoenix: lib/mix/phoenix.ex ]
 end
