@@ -30,7 +30,6 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     phoenix: :boolean,
     quiet: :boolean,
     template: :boolean,
-    use: [:string],
     show_inflection: :boolean
   ]
 
@@ -41,6 +40,18 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     t: :template,
     u: :use
   ]
+
+  @use_aliases %{
+    "ch" => "channel",
+    "c" => "controller",
+    "lc" => "live_component",
+    "lv" => "live_view",
+    "r" => "router",
+    "v" => "view",
+    "sv" => "surface_view",
+    "sc" => "surface_component"
+  }
+
   @doc false
   @impl true
   def run([version]) when version in ~w(-v --version) do
@@ -83,10 +94,11 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
   end
 
   defp generate_module(module, ignore_paths, opts) do
+    {module_name, use_macro} = parse_use_macro(module)
+
     assigns =
-      module
-      |> ElixirMoGen.inflect(ignore_paths)
-      |> Keyword.put(:use_statements, [])
+      module_name
+      |> ElixirMoGen.inflect(ignore_paths, use_macro)
 
     paths = ElixirMoGen.generator_paths()
 
@@ -112,5 +124,12 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
 
   defp template_files(assigns, true) do
     [{:new_eex, "template.html.leex", assigns[:template_path]}]
+  end
+
+  defp parse_use_macro(module) do
+    [module_name, use_alias | rest] = String.split(module, ":")
+    length(rest) < 1 || raise "`#{module}` -- can only add one use macro"
+    use_alias = Map.get(@use_aliases, use_alias, use_alias)
+    {module_name, use_alias}
   end
 end

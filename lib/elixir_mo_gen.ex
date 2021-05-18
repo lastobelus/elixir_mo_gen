@@ -17,7 +17,9 @@ defmodule ElixirMoGen do
 
   def inflect(path), do: inflect(path, [])
 
-  def inflect(path, ignore_paths, mix_task \\ false) do
+  def inflect(path, ignore_paths, mix_task \\ false, use_alias \\ nil)
+
+  def inflect(path, ignore_paths, mix_task, use_alias) do
     parts =
       path
       |> String.split("/")
@@ -40,6 +42,15 @@ defmodule ElixirMoGen do
     test_path = Path.join(test_dir, test_filename)
 
     test_relative_root = String.duplicate("../", length(namespace_parts))
+    web_macro = phoenix_web_macro!(use_alias)
+
+    web_module = web_module(base())
+
+    web_use_statement =
+      cond do
+        is_nil(web_macro) -> ""
+        true -> "#{inspect(web_module)}, :#{web_macro}"
+      end
 
     module =
       parts
@@ -98,7 +109,8 @@ defmodule ElixirMoGen do
       test_app_name: test_app_name,
       app_name: app_name,
       # app_name_otp: app_name_otp,
-      template_path: template_path
+      template_path: template_path,
+      web_use_statement: web_use_statement
     ]
 
     # |> IO.inspect(label: "inflect")
@@ -349,7 +361,20 @@ defmodule ElixirMoGen do
     end
   end
 
-  def phoenix_web_macros do
+  defp phoenix_web_macro!(nil), do: nil
+  defp phoenix_web_macro!(""), do: nil
+
+  defp phoenix_web_macro!(use_alias) when is_binary(use_alias) do
+    phoenix_web_macro!(String.to_atom(use_alias))
+  end
+
+  defp phoenix_web_macro!(use_alias) when is_atom(use_alias) do
+    case Keyword.has_key?(phoenix_web_macros!(), use_alias) do
+      true -> use_alias
+    end
+  end
+
+  defp phoenix_web_macros do
     web = web_module(base())
 
     cond do
@@ -363,8 +388,11 @@ defmodule ElixirMoGen do
 
   def phoenix_web_macros! do
     case phoenix_web_macros() do
-      {:ok, modules} -> modules
-      {:error, msg} -> raise msg
+      {:ok, modules} ->
+        modules
+
+      {:error, msg} ->
+        raise msg
     end
   end
 
