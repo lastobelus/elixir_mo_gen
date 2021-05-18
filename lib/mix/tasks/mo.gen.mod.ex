@@ -30,7 +30,8 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     phoenix: :boolean,
     quiet: :boolean,
     template: :boolean,
-    use: [:string]
+    use: [:string],
+    show_inflection: :boolean
   ]
 
   @aliases [
@@ -47,6 +48,8 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
   end
 
   def run(args) do
+    Mix.Task.run("app.start", ~w(--no-start))
+
     {opts, modules} = parse_opts!(args)
 
     quiet = Keyword.get(opts, :quiet)
@@ -59,7 +62,11 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
       |> Keyword.get(:ignore_paths)
       |> ElixirMoGen.get_ignore_paths(is_phoenix)
 
-    Enum.each(modules, fn module -> generate_module(module, ignore_paths, opts) end)
+    if opts[:show_inflection] do
+      Enum.each(modules, fn module -> print_inflection(module, ignore_paths) end)
+    else
+      Enum.each(modules, fn module -> generate_module(module, ignore_paths, opts) end)
+    end
   end
 
   defp parse_opts!(args) do
@@ -90,6 +97,14 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
       ] ++ template_files(assigns, opts[:template])
 
     ElixirMoGen.copy_from(paths, "priv/templates/mo.gen.mod", assigns, files)
+  end
+
+  defp print_inflection(module, ignore_paths) do
+    inflection =
+      module
+      |> ElixirMoGen.inflect(ignore_paths)
+
+    IO.puts("inflection for #{module}:\n#{inspect(inflection, pretty: true)}\n\n")
   end
 
   defp template_files(_assigns, false), do: []

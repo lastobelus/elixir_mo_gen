@@ -53,6 +53,39 @@ defmodule ElixirMoGen do
 
     once_removed_alias = maybe_once_removed_alias?(module_name, namespace_parts)
 
+    IO.puts(
+      ":code.module_status(#{inspect(web_module(base()))}): #{
+        inspect(:code.module_status(web_module(base())))
+      }"
+    )
+
+    IO.puts(":code.module_status(Bob): #{inspect(:code.module_status(Bob))}")
+
+    IO.puts(
+      "function_exported?(#{inspect(web_module(base()))}, :__info__, 1): #{
+        inspect(function_exported?(web_module(base()), :__info__, 1))
+      }"
+    )
+
+    IO.puts(
+      "function_exported?(Bob, :__info__, 1): #{inspect(function_exported?(Bob, :__info__, 1))}"
+    )
+
+    IO.puts(
+      "Code.ensure_compiled(#{web_module(base())}): #{
+        inspect(Code.ensure_compiled(web_module(base())))
+      }"
+    )
+
+    IO.puts("Code.ensure_compiled(Bob): #{inspect(Code.ensure_compiled(Bob))}")
+
+    IO.puts("phoenix_web_macros:")
+
+    case phoenix_web_macros() do
+      {:ok, macros} -> IO.inspect(macros)
+      {:error, msg} -> IO.puts(msg)
+    end
+
     [
       namespace_parts: namespace_parts,
       module_path: module_path,
@@ -314,6 +347,29 @@ defmodule ElixirMoGen do
     else
       {:error, "can't find file"}
     end
+  end
+
+  def phoenix_web_macros do
+    web = web_module(base())
+
+    cond do
+      module_loaded?(web) ->
+        {:ok, web_module(base()).__info__(:functions)}
+
+      true ->
+        {:error, "web module `#{inspect(web)}` not available"}
+    end
+  end
+
+  def phoenix_web_macros! do
+    case phoenix_web_macros() do
+      {:ok, modules} -> modules
+      {:error, msg} -> raise msg
+    end
+  end
+
+  def module_loaded?(module) do
+    :code.module_status(module) == :loaded
   end
 
   # region [ copied from phoenix: lib/mix/phoenix.ex ]
