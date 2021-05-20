@@ -84,7 +84,6 @@ defmodule Mix.Tasks.Mo.Gen.Gen do
     assigns =
       module
       |> ElixirMoGen.inflect(ignore_paths, true)
-      |> Keyword.put(:use_statements, [])
 
     paths = ElixirMoGen.generator_paths()
 

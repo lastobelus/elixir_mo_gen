@@ -147,6 +147,26 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
         end)
       end)
     end
+
+    test "it parses module_name:alias to add `use MyAppWeb, :alias` statement", config do
+      in_tmp_phx_project(config.test, fn ->
+        Gen.Mod.run(~w(
+          elixir_mo_gen_web/controllers/new_controller:c
+          elixir_mo_gen_web/views/my_view:v
+          -q
+          ))
+
+        assert_file("lib/elixir_mo_gen_web/controllers/new_controller.ex", fn file ->
+          assert file =~ "defmodule ElixirMoGenWeb.NewController do"
+          assert file =~ "use ElixirMoGenWeb, :controller"
+        end)
+
+        assert_file("lib/elixir_mo_gen_web/views/my_view.ex", fn file ->
+          assert file =~ "defmodule ElixirMoGenWeb.MyView do"
+          assert file =~ "use ElixirMoGenWeb, :view"
+        end)
+      end)
+    end
   end
 
   describe "generated tests" do

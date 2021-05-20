@@ -30,7 +30,8 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     phoenix: :boolean,
     quiet: :boolean,
     template: :boolean,
-    show_inflection: :boolean
+    show_inflection: :boolean,
+    force: :boolean
   ]
 
   @aliases [
@@ -38,7 +39,8 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     q: :quiet,
     p: :phoenix,
     t: :template,
-    u: :use
+    u: :use,
+    f: :force
   ]
 
   @use_aliases %{
@@ -59,9 +61,18 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
   end
 
   def run(args) do
-    Mix.Task.run("app.start", ~w(--no-start))
-
     {opts, modules} = parse_opts!(args)
+
+    try do
+      Mix.Task.run("app.start", ~w(--no-start))
+    rescue
+      Mix.Error ->
+        ElixirMoGen.warn(
+          ~s{Mix.Task.run("app.start", ~w(--no-start))},
+          "unable to load app, some features may not be available",
+          opts
+        )
+    end
 
     quiet = Keyword.get(opts, :quiet)
     ElixirMoGen.print_version_banner("mo.gen.mod", quiet: quiet)
@@ -74,7 +85,7 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
       |> ElixirMoGen.get_ignore_paths(is_phoenix)
 
     if opts[:show_inflection] do
-      Enum.each(modules, fn module -> print_inflection(module, ignore_paths) end)
+      Enum.each(modules, fn module -> print_inflection(module, ignore_paths, opts) end)
     else
       Enum.each(modules, fn module -> generate_module(module, ignore_paths, opts) end)
     end
@@ -94,11 +105,11 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
   end
 
   defp generate_module(module, ignore_paths, opts) do
-    {module_name, use_macro} = parse_use_macro(module)
+    {module_name, use_macro} = parse_use_macro(module, opts)
 
     assigns =
       module_name
-      |> ElixirMoGen.inflect(ignore_paths, use_macro)
+      |> ElixirMoGen.inflect(ignore_paths, false, use_macro)
 
     paths = ElixirMoGen.generator_paths()
 
@@ -111,10 +122,15 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     ElixirMoGen.copy_from(paths, "priv/templates/mo.gen.mod", assigns, files)
   end
 
-  defp print_inflection(module, ignore_paths) do
+  defp print_inflection(module, ignore_paths, opts) do
+    {module_name, use_macro} = parse_use_macro(module, opts)
+
+    IO.puts("module_name: #{inspect(module_name)}")
+    IO.puts("use_macro: #{inspect(use_macro)}")
+
     inflection =
-      module
-      |> ElixirMoGen.inflect(ignore_paths)
+      module_name
+      |> ElixirMoGen.inflect(ignore_paths, false, use_macro)
 
     IO.puts("inflection for #{module}:\n#{inspect(inflection, pretty: true)}\n\n")
   end
@@ -126,10 +142,30 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
     [{:new_eex, "template.html.leex", assigns[:template_path]}]
   end
 
-  defp parse_use_macro(module) do
-    [module_name, use_alias | rest] = String.split(module, ":")
-    length(rest) < 1 || raise "`#{module}` -- can only add one use macro"
-    use_alias = Map.get(@use_aliases, use_alias, use_alias)
-    {module_name, use_alias}
+  defp parse_use_macro(module, opts) do
+    [module_name | rest] = String.split(module, ":")
+
+    case length(rest) do
+      0 ->
+        {module_name, nil}
+
+      1 ->
+        use_alias = List.first(rest)
+        use_alias = Map.get(@use_aliases, use_alias, use_alias)
+
+        if use_alias do
+          case ElixirMoGen.phoenix_web_macros() do
+            {:ok, _macros} ->
+              {module_name, use_alias}
+
+            {:error, msg} ->
+              ElixirMoGen.warn("#{module}", "#{msg} using `#{use_alias}`", opts)
+              {module_name, use_alias}
+          end
+        end
+
+      _ ->
+        raise "`#{module}` -- can only add one use macro"
+    end
   end
 end

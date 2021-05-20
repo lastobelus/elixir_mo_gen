@@ -45,6 +45,8 @@ defmodule MixHelper do
 
     in_tmp_project(test, fn ->
       File.write!("mix.exs", mixfile_contents(app, deps))
+      File.mkdir_p!("#{@app_name}_web/lib")
+      File.write!("#{@app_name}_web/lib/#{@app_name}_web.ex", web_module_contents(app))
 
       func.()
     end)
@@ -197,6 +199,33 @@ defmodule MixHelper do
 
       defp deps do
         #{inspect(Enum.map(deps, &get_dep/1))}
+      end
+    end
+    """
+  end
+
+  def web_module_contents(app) do
+    """
+    defmodule #{Macro.camelize(to_string(app))}Web do
+      def controller do
+      end
+
+      def view do
+      end
+
+      def live_view do
+      end
+
+      def live_component do
+      end
+
+      def router do
+      end
+
+      def channel do
+      end
+
+      defp view_helpers do
       end
     end
     """

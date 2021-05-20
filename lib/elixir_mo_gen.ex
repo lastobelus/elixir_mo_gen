@@ -17,9 +17,9 @@ defmodule ElixirMoGen do
 
   def inflect(path), do: inflect(path, [])
 
-  def inflect(path, ignore_paths, mix_task \\ false, use_alias \\ nil)
+  def inflect(path, ignore_paths, mix_task \\ false, use_macro \\ nil)
 
-  def inflect(path, ignore_paths, mix_task, use_alias) do
+  def inflect(path, ignore_paths, mix_task, use_macro) do
     parts =
       path
       |> String.split("/")
@@ -42,14 +42,13 @@ defmodule ElixirMoGen do
     test_path = Path.join(test_dir, test_filename)
 
     test_relative_root = String.duplicate("../", length(namespace_parts))
-    web_macro = phoenix_web_macro!(use_alias)
 
     web_module = web_module(base())
 
-    web_use_statement =
+    use_statements =
       cond do
-        is_nil(web_macro) -> ""
-        true -> "#{inspect(web_module)}, :#{web_macro}"
+        is_nil(use_macro) -> []
+        true -> ["use #{inspect(web_module)}, :#{use_macro}"]
       end
 
     module =
@@ -64,53 +63,20 @@ defmodule ElixirMoGen do
 
     once_removed_alias = maybe_once_removed_alias?(module_name, namespace_parts)
 
-    IO.puts(
-      ":code.module_status(#{inspect(web_module(base()))}): #{
-        inspect(:code.module_status(web_module(base())))
-      }"
-    )
-
-    IO.puts(":code.module_status(Bob): #{inspect(:code.module_status(Bob))}")
-
-    IO.puts(
-      "function_exported?(#{inspect(web_module(base()))}, :__info__, 1): #{
-        inspect(function_exported?(web_module(base()), :__info__, 1))
-      }"
-    )
-
-    IO.puts(
-      "function_exported?(Bob, :__info__, 1): #{inspect(function_exported?(Bob, :__info__, 1))}"
-    )
-
-    IO.puts(
-      "Code.ensure_compiled(#{web_module(base())}): #{
-        inspect(Code.ensure_compiled(web_module(base())))
-      }"
-    )
-
-    IO.puts("Code.ensure_compiled(Bob): #{inspect(Code.ensure_compiled(Bob))}")
-
-    IO.puts("phoenix_web_macros:")
-
-    case phoenix_web_macros() do
-      {:ok, macros} -> IO.inspect(macros)
-      {:error, msg} -> IO.puts(msg)
-    end
-
     [
       namespace_parts: namespace_parts,
       module_path: module_path,
       test_root: test_root,
       test_path: test_path,
+      test_relative_root: test_relative_root,
       module: module,
       module_name: module_name,
-      test_relative_root: test_relative_root,
       once_removed_alias: once_removed_alias,
       test_app_name: test_app_name,
       app_name: app_name,
       # app_name_otp: app_name_otp,
       template_path: template_path,
-      web_use_statement: web_use_statement
+      use_statements: use_statements
     ]
 
     # |> IO.inspect(label: "inflect")
@@ -318,6 +284,10 @@ defmodule ElixirMoGen do
     end
   end
 
+  def warn(cmd, message, opts) do
+    log(:red, cmd, message, opts)
+  end
+
   defp to_app_source(path, source_dir) when is_binary(path),
     do: Path.join(path, source_dir)
 
@@ -361,20 +331,8 @@ defmodule ElixirMoGen do
     end
   end
 
-  defp phoenix_web_macro!(nil), do: nil
-  defp phoenix_web_macro!(""), do: nil
 
-  defp phoenix_web_macro!(use_alias) when is_binary(use_alias) do
-    phoenix_web_macro!(String.to_atom(use_alias))
-  end
-
-  defp phoenix_web_macro!(use_alias) when is_atom(use_alias) do
-    case Keyword.has_key?(phoenix_web_macros!(), use_alias) do
-      true -> use_alias
-    end
-  end
-
-  defp phoenix_web_macros do
+  def phoenix_web_macros do
     web = web_module(base())
 
     cond do
@@ -386,6 +344,7 @@ defmodule ElixirMoGen do
     end
   end
 
+  @spec phoenix_web_macros! :: any
   def phoenix_web_macros! do
     case phoenix_web_macros() do
       {:ok, modules} ->
