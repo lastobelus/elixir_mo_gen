@@ -19,8 +19,8 @@ migrations with the forms:
   - `remove_example_from_TABLES example:string`
   - `remove_index_from_TABLES [col1,col2]`
 [x] add --template option to `mo.gen.mod` which will create an associated `.html.leex` template
-- add --use option to `mo.gen.mod` that adds `use MyAppWeb, :foo` where foo can be any public function in the MyAppWeb module
-- understand `w-/` and `a-/` aliases, that expand to `lib/my_app_web` and `lib/my_app` respectively
+[x] add --use option to `mo.gen.mod` that adds `use MyAppWeb, :foo` where foo can be any public function in the MyAppWeb module
+[ ] automatically add use macro to modules based on ignore_path & name (web/controllers/my_controller automatically gets a `use MyAppWeb, :controller`)
 
 ## Installation
 

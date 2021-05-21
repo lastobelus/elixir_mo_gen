@@ -6,14 +6,66 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
 
       mix mo.gen.mod some/namespace/new_module
 
+  ...will create `lib/my_app/some/namespace/new_module.ex`.
+
+  To create a module outside of the app namespace, prefix the path with a `/`:
+
+      mix mo.gen.mod /some/namespace/new_module
+
+  will create `lib/some/namespace/new_module.ex`.
+
+  It will also understand PascalCase module names, but don't mix with underscore or `/`:
+
+      mix mo.gen.mod Some.NewModule
+
+  will create `lib/my_app/some/new_module.ex`.
+
+  It can handle names with `.` in them, when supplied in path/underscore form:
+
+      mix mo.gen.mod some/module.with.dot
+
+  will create `lib/my_app/some/module.with.dot.ex`, and the module name will be "MyApp.Some.ModuleWithDot".
+  This feature is used by `mix mo.gen.gen`.
+
   It can create multiple modules/tests:
 
       mix mo.gen.mod first/module second/module
 
+  ## Phoenix Apps
+
   When used in a Phoenix app (detected by inspecting mix.exs deps function
-  for a reference to `:phoenix`, or by passing --phoenix or --no-phoenix)
+  for a reference to `:phoenix`, or by passing `--phoenix`/`-p`)
   it will omit standard phoenix ignored paths (controllers, channels, views)
   from the fully-qualified module name.
+
+  You can also use `web` as an alias for `my_app_web` in phoenix apps:
+
+      mix mo.gen.mod web/controllers/new_controller
+
+  will  create `lib/my_app_web/controllers/new_controller.ex`, with the module
+  name `MyAppWeb.NewController`
+
+  You can indicate a web use macro by appending it with colon. The following aliases
+  are recognized:
+
+      "ch" => "channel",
+      "c" => "controller",
+      "lc" => "live_component",
+      "lv" => "live_view",
+      "r" => "router",
+      "v" => "view",
+      "sv" => "surface_view",
+      "sc" => "surface_component"
+
+  For example:
+
+      mix mo.gen.mod web/controllers/new_controller:c
+
+  will  create `lib/my_app_web/controllers/new_controller.ex`, with the module
+  name `MyAppWeb.NewController`, and add the line `use MyAppWeb, :controller`
+
+
+  ## Configurable Ignore Paths
 
   You can also pass your own paths to ignore in module names with one or more
   `--template some_path` options, or in your app config/dev.exs:
