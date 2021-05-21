@@ -26,3 +26,5 @@ migrations with the forms:
 
 1. Download this repo, `cd` to it
 2. run `MIX_ENV=prod mix do archive.build, archive.install`
+  -- OR --
+  run `./install.sh` 
