@@ -20,16 +20,20 @@ defmodule ElixirMoGen do
   def inflect(path, ignore_paths, mix_task \\ false, use_macro \\ nil)
 
   def inflect(path, ignore_paths, mix_task, use_macro) do
+    app_name = to_string(otp_app())
+
     parts =
       path
+      |> remove_extension()
+      |> maybe_underscore()
+      |> String.replace(~r|/lib|, "lib")
       |> String.split("/")
-      |> ensure_lib_in_path
       |> maybe_ensure_mix_tasks_in_path(mix_task)
+      |> locate_in_lib(app_name)
 
     namespace_parts = Enum.slice(parts, 1..-2)
     lib_dir = Path.join(Enum.slice(parts, 0..-2))
     file_base_name = List.last(parts)
-    app_name = to_string(otp_app())
 
     module_filename = file_base_name <> ".ex"
     test_app_name = app_name <> "_test"
@@ -119,23 +123,65 @@ defmodule ElixirMoGen do
     end
   end
 
-  defp ensure_lib_in_path(parts) do
+  defp locate_in_lib(parts, app_name) do
+    first_segment = List.first(parts)
+    first_segment_exists = File.exists?(Path.join(["lib", first_segment]))
+    web_name = app_name <> "_web"
+
     cond do
-      List.first(parts) == "lib" ->
+      first_segment == "lib" ->
         parts
 
-      true ->
+      first_segment == "" ->
+        ["lib"] ++ Enum.slice(parts, 1..-1)
+
+      first_segment == app_name ->
         ["lib"] ++ parts
+
+      first_segment_exists ->
+        ["lib"] ++ parts
+
+      first_segment == "mix" ->
+        ["lib"] ++ parts
+
+      first_segment == "web" ->
+        ["lib", web_name] ++ Enum.slice(parts, 1..-1)
+
+      true ->
+        ["lib", app_name] ++ parts
+    end
+  end
+
+  defp remove_extension(path) do
+    String.replace(path, ~r/.exs?$/, "")
+  end
+
+  def maybe_underscore(path) do
+    cond do
+      String.contains?(path, "/") ->
+        String.downcase(path)
+
+      path =~ ~r/[A-Z]/ ->
+        ElixirMoGen.Naming.underscore(path)
+
+      true ->
+        path
     end
   end
 
   defp maybe_ensure_mix_tasks_in_path(parts, mix_task) do
     cond do
-      not mix_task or Enum.slice(parts, 1..2) == ~w(mix tasks) ->
+      not mix_task ->
+        parts
+
+      Enum.slice(parts, 0..2) == ~w(lib mix tasks) ->
+        parts
+
+      Enum.slice(parts, 0..1) == ~w(mix tasks) ->
         parts
 
       true ->
-        ["lib", "mix", "tasks"] ++ Enum.slice(parts, 1..-1)
+        ["lib", "mix", "tasks"] ++ parts
     end
   end
 
@@ -330,7 +376,6 @@ defmodule ElixirMoGen do
       {:error, "can't find file"}
     end
   end
-
 
   def phoenix_web_macros do
     web = web_module(base())

@@ -105,7 +105,9 @@ defmodule MixHelper do
           )
         end
 
-        function.()
+        in_project(@test_app_name, path, fn _module ->
+          function.()
+        end)
       end)
     after
       File.rm_rf!(path)
@@ -322,6 +324,12 @@ defmodule MixHelper do
     if opts[:verbose] do
       IO.puts(IO.ANSI.color_background(16) <> IO.ANSI.color(130) <> msg <> IO.ANSI.reset())
     end
+  end
+
+  def inspect_file(path) do
+    IO.puts("------------------- #{path} --------------------------")
+    IO.puts(File.read!(path))
+    IO.puts("----------------------------------------------")
   end
 
   def inspect_app_dir(also \\ nil) do
