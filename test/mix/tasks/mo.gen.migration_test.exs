@@ -48,17 +48,4 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
     assert(parse.("remove_index_from_products")) ==
       {:remove_index, %{"table" => "products"}}
   end
-
-  # Example of testing generated file
-  #
-  # test "generates foo/bar", config do
-  #   in_tmp_project(config.test, fn ->
-  #     Gen.Migration.run(~w(foo_bar -q))
-
-  #     assert_file("lib/foo.bar.ex", fn file ->
-  #       assert file =~ "defmodule Foo.Bar do"
-  #     end)
-
-  #   end)
-  # end
 end

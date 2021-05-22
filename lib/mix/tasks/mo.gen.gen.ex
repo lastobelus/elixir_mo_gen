@@ -32,7 +32,18 @@ defmodule Mix.Tasks.Mo.Gen.Gen do
 
   @shortdoc "Creates a new Elixir module and associated test file."
 
-  @switches [ignore_paths: [:string, :keep], phoenix: :boolean, quiet: :boolean, clean: :boolean]
+  @switches [
+    ignore_paths: [:string, :keep],
+    phoenix: :boolean,
+    quiet: :boolean,
+    clean: :boolean
+  ]
+
+  @aliases [
+    i: :ignore_paths,
+    q: :quiet,
+    d: :clean
+  ]
   @doc false
   @impl true
   def run([version]) when version in ~w(-v --version) do
@@ -59,7 +70,7 @@ defmodule Mix.Tasks.Mo.Gen.Gen do
     {opts, modules} =
       OptionParser.parse!(args,
         strict: @switches,
-        aliases: [i: :ignore_paths, q: :quiet, d: :clean]
+        aliases: @aliases
       )
 
     ignore_paths =
