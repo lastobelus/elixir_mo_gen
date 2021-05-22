@@ -307,7 +307,9 @@ defmodule MixHelper do
   def run_mix_test(test, opts \\ []) do
     log("compiling tmp_project for `#{test}`...", opts)
 
-    {output, _exit_status} = System.cmd("mix", ~w(test), stderr_to_stdout: true)
+    {output, _exit_status} =
+      System.cmd("mix", ~w(test  --no-deps-check --no-start), stderr_to_stdout: true)
+
     log("output:\n#{output}", opts)
     [deps_build_output | test_output] = String.split(output, "==> #{@test_app_name}\nCompiling")
 

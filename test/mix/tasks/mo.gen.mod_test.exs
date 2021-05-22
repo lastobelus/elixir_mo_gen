@@ -218,12 +218,13 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
     end
   end
 
+  @tag slow: true
   describe "generated tests" do
     test "the generated test runs, and flunks", config do
       in_tmp_project(config.test, fn ->
         Gen.Mod.run(~w(some/namespace/new_module -q))
 
-        {mix_test_status, output} = run_mix_test(config.test)
+        {mix_test_status, output} = run_mix_test(config.test, verbose: true)
 
         assert mix_test_status == :error, "`mix test` should have flunked"
 
