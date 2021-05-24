@@ -1,7 +1,7 @@
 defmodule ElixirMoGen.MixProject do
   use Mix.Project
 
-  @version "0.0.3"
+  @version "0.0.4"
   @scm_url "https://github.com/lastobelus/elixir_mo_gen"
 
   def project do

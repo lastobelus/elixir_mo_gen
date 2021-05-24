@@ -4,7 +4,9 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   """
 
   use Mix.Task
+  alias ElixirMoGen.Migration
   alias ElixirMoGen.Migration.Column
+  import Mix.Generator
 
   @shortdoc "Ecto migration generator that understands short-forms like `add_price_to_products :float`"
 
@@ -17,6 +19,8 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   # see https://hexdocs.pm/elixir/OptionParser.html#parse/2
   @switches [
     quiet: :boolean,
+    migrations_path: :string,
+    repo: [:string, :keep],
     comment: :string,
     prefix: :string,
     # column migrations
@@ -36,6 +40,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
 
   @aliases [
     q: :quiet,
+    r: :repo,
     c: :comment,
     # for "namespace"
     n: :prefix,
@@ -87,6 +92,8 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   end
 
   def run(args) do
+    repos = Mix.Ecto.parse_repo(args)
+
     {opts, args} = parse_opts!(args)
 
     [migration_name | args] = args
@@ -96,6 +103,8 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     IO.puts("opts: #{inspect(opts)}")
     IO.puts("migration_name: #{inspect(migration_name)}")
     IO.puts("args: #{inspect(args)}")
+    IO.puts("Migration.migration_module: #{inspect(Migration.migration_module())}")
+    IO.puts("repos: #{inspect(repos)}")
 
     case parse_migration_type(migration_name) do
       nil ->
@@ -226,4 +235,20 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
       {:error, msg} -> raise_with_help(msg, :add_column)
     end
   end
+
+  def maybe_run_migration?(file, repo) do
+    if Mix.Ecto.open?(file) and Mix.shell().yes?("Do you want to run this migration?") do
+      Mix.Task.run("ecto.migrate", ["-r", inspect(repo)])
+    end
+  end
+
+  embed_template(:migration, """
+  defmodule <%= inspect @mod %> do
+    use <%= inspect Migration.migration_module() %>
+
+    def change do
+  <%= @change %>
+    end
+  end
+  """)
 end
