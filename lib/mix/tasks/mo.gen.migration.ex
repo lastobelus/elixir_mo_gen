@@ -4,6 +4,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   """
 
   use Mix.Task
+  alias ElixirMoGen.Migration.Column
 
   @shortdoc "Ecto migration generator that understands short-forms like `add_price_to_products :float`"
 
@@ -78,6 +79,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
       "# column list is required if OPTIONALINDEXNAME not included"
     ]
   }
+
   @doc false
   @impl true
   def run([version]) when version in ~w(-v --version) do
@@ -99,9 +101,9 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
       nil ->
         raise_with_help("unable to interpret migration `#{migration_name}`", :unknown_cmd)
 
-      {cmd, cmd_opts} ->
-        cmd_opts = add_opts_from_args(cmd_opts, cmd, args)
-        IO.puts("running #{inspect(cmd)} with opts #{inspect(cmd_opts)}")
+      {cmd, migration} ->
+        migration = add_opts_from_args(cmd, migration, args)
+        IO.puts("running #{inspect(cmd)} with opts #{inspect(migration)}")
     end
   end
 
@@ -148,6 +150,17 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     """)
   end
 
+  def raise_with_help(msg, cmd) do
+    Mix.raise("""
+    #{msg}
+
+    `#{to_string(cmd)}` migrations have the following form:
+
+    #{migration_help(cmd, "    ")}
+
+    """)
+  end
+
   def migration_help(indent) do
     cmds = Map.keys(@migration_templates)
 
@@ -168,6 +181,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   end
 
   def migration_help(cmd, indent, cmd_indent_size) do
+    IO.puts("cmd: #{inspect(cmd)}")
     [first | rest] = @migration_templates[cmd]
     name = to_string(cmd)
 
@@ -202,7 +216,14 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     end)
   end
 
-  def add_opts_from_args(cmd_opts, cmd, args) do
-    cmd_opts
+  def add_opts_from_args(:add_column, migration, args) do
+    if length(args) > 1 do
+      raise_with_help("too many arguments for `add_COLUMN_to_TABLE`", :add_column)
+    end
+
+    case Column.parse_single_column(List.first(args), migration["column"], migration) do
+      {:ok, columns} -> Map.put(migration, :columns, columns)
+      {:error, msg} -> raise_with_help(msg, :add_column)
+    end
   end
 end
