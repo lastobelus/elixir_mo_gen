@@ -115,21 +115,23 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
   def run(args) do
     {opts, modules} = parse_opts!(args)
 
-    try do
-      Mix.Task.run("app.start", ~w(--no-start))
-    rescue
-      Mix.Error ->
-        ElixirMoGen.warn(
-          ~s{Mix.Task.run("app.start", ~w(--no-start))},
-          "unable to load app, some features may not be available",
-          opts
-        )
-    end
-
     quiet = Keyword.get(opts, :quiet)
     ElixirMoGen.print_version_banner("mo.gen.mod", quiet: quiet)
 
     is_phoenix = Keyword.get(opts, :phoenix, nil)
+
+    try do
+      Mix.Task.run("app.config")
+      # Mix.Task.run("app.start", ~w(--no-start))
+    rescue
+      Mix.Error ->
+        ElixirMoGen.warn(
+          # ~s{Mix.Task.run("app.start", ~w(--no-start))},
+          ~s{Mix.Task.run("app.config")},
+          "unable to load app, some features may not be available",
+          opts
+        )
+    end
 
     ignore_paths =
       opts
