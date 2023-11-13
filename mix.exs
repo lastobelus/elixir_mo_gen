@@ -1,14 +1,14 @@
 defmodule ElixirMoGen.MixProject do
   use Mix.Project
 
-  @version "0.0.4"
+  @version "0.0.5"
   @scm_url "https://github.com/lastobelus/elixir_mo_gen"
 
   def project do
     [
       app: :elixir_mo_gen,
       version: @version,
-      elixir: "~> 1.11",
+      elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: [
@@ -40,7 +40,9 @@ defmodule ElixirMoGen.MixProject do
 
   defp deps do
     [
-      {:credo, "~> 1.5", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:ecto_sql, "~> 3.10", only: [:dev, :test]},
+      {:postgrex, ">= 0.0.0", only: [:dev, :test]}
     ]
   end
 end

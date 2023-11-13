@@ -153,7 +153,7 @@ defmodule MixHelper do
         true ->
           """
           [
-            {:phoenix, "~> 1.5.7"}
+            {:phoenix, "~> 1.7"}
           ]
           """
 
