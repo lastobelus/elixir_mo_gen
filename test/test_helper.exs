@@ -1,3 +1,5 @@
+ExUnit.configure(exclude: [slow: true])
+
 ExUnit.start()
 
 File.cd!("priv/test_app", fn ->
