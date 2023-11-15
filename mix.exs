@@ -42,6 +42,7 @@ defmodule ElixirMoGen.MixProject do
     [
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ecto_sql, "~> 3.10", only: [:dev, :test]},
+      {:phoenix, "~> 1.7", only: [:dev, :test]},
       {:postgrex, ">= 0.0.0", only: [:dev, :test]}
     ]
   end
