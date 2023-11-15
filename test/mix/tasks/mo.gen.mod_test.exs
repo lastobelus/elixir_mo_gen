@@ -1,9 +1,14 @@
 Code.require_file("../../mix_helper.exs", __DIR__)
+Code.require_file("../../test_app_helper.exs", __DIR__)
 
 defmodule Mix.Tasks.Mo.Gen.ModTest do
   use ExUnit.Case
+
   import MixHelper
+  import TestAppHelper
   alias Mix.Tasks.Mo.Gen
+
+  @moduletag :tmp_dir
 
   setup do
     Mix.Task.clear()
@@ -25,52 +30,67 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
     end)
   end
 
-  test "generates multiple files", config do
-    in_tmp_project(config.test, fn ->
+  test "uses the current app as the namespace", config do
+    in_test_app(config.tmp_dir, fn ->
       Gen.Mod.run(~w(some/namespace/new_module other/other_module -q))
 
-      assert_file("lib/elixir_mo_gen_test/some/namespace/new_module.ex", fn file ->
-        assert file =~ "defmodule ElixirMoGenTest.Some.Namespace.NewModule do"
+      assert_file("lib/test_app/some/namespace/new_module.ex", fn file ->
+        assert file =~ "defmodule TestApp.Some.Namespace.NewModule do"
       end)
 
-      assert_file("test/elixir_mo_gen_test/some/namespace/new_module_test.exs", fn file ->
-        assert file =~ "defmodule ElixirMoGenTest.Some.Namespace.NewModuleTest do"
+      assert_file("test/test_app/some/namespace/new_module_test.exs", fn file ->
+        assert file =~ "defmodule TestApp.Some.Namespace.NewModuleTest do"
       end)
 
-      assert_file("lib/elixir_mo_gen_test/other/other_module.ex", fn file ->
-        assert file =~ "defmodule ElixirMoGenTest.Other.OtherModule do"
+    end)
+  end
+
+  test "generates multiple files", config do
+    in_test_app(config.tmp_dir, fn ->
+      Gen.Mod.run(~w(some/namespace/new_module other/other_module -q))
+
+      assert_file("lib/test_app/some/namespace/new_module.ex", fn file ->
+        assert file =~ "defmodule TestApp.Some.Namespace.NewModule do"
       end)
 
-      assert_file("test/elixir_mo_gen_test/other/other_module_test.exs", fn file ->
-        assert file =~ "defmodule ElixirMoGenTest.Other.OtherModuleTest do"
+      assert_file("test/test_app/some/namespace/new_module_test.exs", fn file ->
+        assert file =~ "defmodule TestApp.Some.Namespace.NewModuleTest do"
+      end)
+
+      assert_file("lib/test_app/other/other_module.ex", fn file ->
+        assert file =~ "defmodule TestApp.Other.OtherModule do"
+      end)
+
+      assert_file("test/test_app/other/other_module_test.exs", fn file ->
+        assert file =~ "defmodule TestApp.Other.OtherModuleTest do"
       end)
     end)
   end
 
   test "handles names with dots like mo.gen.mod", config do
-    in_tmp_project(config.test, fn ->
+    in_test_app(config.tmp_dir, fn ->
       Gen.Mod.run(~w(some/namespace/mo.gen.mod -q))
 
-      assert_file("lib/elixir_mo_gen_test/some/namespace/mo.gen.mod.ex", fn file ->
-        assert file =~ "defmodule ElixirMoGenTest.Some.Namespace.Mo.Gen.Mod do"
+      assert_file("lib/test_app/some/namespace/mo.gen.mod.ex", fn file ->
+        assert file =~ "defmodule TestApp.Some.Namespace.Mo.Gen.Mod do"
       end)
 
-      assert_file("test/elixir_mo_gen_test/some/namespace/mo.gen.mod_test.exs", fn file ->
-        assert file =~ "defmodule ElixirMoGenTest.Some.Namespace.Mo.Gen.ModTest do"
+      assert_file("test/test_app/some/namespace/mo.gen.mod_test.exs", fn file ->
+        assert file =~ "defmodule TestApp.Some.Namespace.Mo.Gen.ModTest do"
       end)
     end)
   end
 
   test "handles CamelCase names", config do
-    in_tmp_project(config.test, fn ->
+    in_test_app(config.tmp_dir, fn ->
       Gen.Mod.run(~w(MySpace.MyCamelThing -q))
 
-      assert_file("lib/elixir_mo_gen_test/my_space/my_camel_thing.ex", fn file ->
-        assert file =~ "defmodule ElixirMoGenTest.MySpace.MyCamelThing do"
+      assert_file("lib/test_app/my_space/my_camel_thing.ex", fn file ->
+        assert file =~ "defmodule TestApp.MySpace.MyCamelThing do"
       end)
 
-      assert_file("test/elixir_mo_gen_test/my_space/my_camel_thing_test.exs", fn file ->
-        assert file =~ "defmodule ElixirMoGenTest.MySpace.MyCamelThingTest do"
+      assert_file("test/test_app/my_space/my_camel_thing_test.exs", fn file ->
+        assert file =~ "defmodule TestApp.MySpace.MyCamelThingTest do"
       end)
     end)
   end
@@ -78,7 +98,7 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
   test "handles `.ex` included in name", config do
     in_tmp_project(config.test, fn ->
       File.mkdir!("lib/some")
-      Gen.Mod.run(~w(Some.NewModule -q))
+      Gen.Mod.run(~w(some/new_module.ex -q))
 
       assert_file("lib/some/new_module.ex", fn file ->
         assert file =~ "defmodule Some.NewModule do"
@@ -88,17 +108,17 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
 
   test "when name doesn't start with lib adds to `lib/my_app` unless first segment exists or starts with slash",
        config do
-    in_tmp_project(config.test, fn ->
+    in_test_app(config.tmp_dir, fn ->
       File.mkdir!("lib/exists")
 
       Gen.Mod.run(~w(exists/new_module doesnt_exist/other_module -q))
 
-      refute_file("lib/elixir_mo_gen_test/new_module.ex")
-      refute_file("lib/elixir_mo_gen_test/exists/new_module.ex")
+      refute_file("lib/test_app/new_module.ex")
+      refute_file("lib/test_app/exists/new_module.ex")
       assert_file("lib/exists/new_module.ex")
 
       refute_file("lib/doesnt_exist/other_module.ex")
-      assert_file("lib/elixir_mo_gen_test/doesnt_exist/other_module.ex")
+      assert_file("lib/test_app/doesnt_exist/other_module.ex")
     end)
   end
 
@@ -175,6 +195,7 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
   end
 
   describe "phoenix" do
+
     test "does not add standard ignore paths to namespace", config do
       in_tmp_phx_project(config.test, fn ->
         Gen.Mod.run(~w(web/controllers/new_controller -q))
@@ -219,17 +240,20 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
   end
 
   @tag slow: true
+  # sometimes fails with
+  #  Failed to restore deps/telemetry/_build/prod/lib/.rebar3/rebar_compiler_erl/source.dag
   describe "generated tests" do
-    test "the generated test runs, and flunks", config do
-      in_tmp_project(config.test, fn ->
+
+    test "the generated test runs and flunks", config do
+      in_test_app(config.tmp_dir, fn ->
         Gen.Mod.run(~w(some/namespace/new_module -q))
 
-        {mix_test_status, output} = run_mix_test(config.test, verbose: true)
+        {mix_test_status, output} = run_mix_test()
 
-        assert mix_test_status == :error, "`mix test` should have flunked"
+        assert mix_test_status == :ok, "`mix test` should have run"
 
         assert output =~
-                 ~S/code: flunk("no tests for #{ElixirMoGenTest.Some.Namespace.NewModule} yet!")/
+                 ~S/code: flunk("no tests for #{TestApp.Some.Namespace.NewModule} yet!")/
 
         assert output =~ "1 test, 1 failure"
       end)
