@@ -16,12 +16,16 @@ defmodule MixHelper do
 
   @app_name :elixir_mo_gen
   @test_app_name :elixir_mo_gen_test
+
+  # default deps versions
   @deps %{
-    phoenix: {:phoenix, "~> 1.5.8"}
+    phoenix: "~> 1.7",
+    ecto_sql: "~> 3.10",
+    postgrex: ">= 0.0.0"
   }
 
   def tmp_path do
-    Path.expand("../../tmp", __DIR__)
+    Path.expand("../tmp", __DIR__)
   end
 
   defp random_string(len) do
@@ -30,34 +34,53 @@ defmodule MixHelper do
 
   def in_tmp(which, function) do
     path = Path.join([tmp_path(), random_string(10), to_string(which)])
-
+    IO.puts("\n-------------- in_tmp '#{which}' START-------------")
+    IO.inspect(path, label: "in_tmp: path")
     try do
       File.rm_rf!(path)
       File.mkdir_p!(path)
       File.cd!(path, function)
-    after
+    rescue
+      e ->
+        IO.puts("MixHelper.in_tmp.rescue")
+        reraise e, __STACKTRACE__
+  after
+      IO.puts("after running in_tmp, removing #{path}")
       File.rm_rf!(path)
     end
+    IO.puts("\n-------------- in_tmp '#{which}' END-------------")
   end
+
 
   def in_tmp_phx_project(test, func, deps \\ [:phoenix]) do
     app = @test_app_name
 
-    in_tmp_project(test, fn ->
-      File.write!("mix.exs", mixfile_contents(app, deps))
-      File.mkdir_p!("#{@app_name}_web/lib")
-      File.write!("#{@app_name}_web/lib/#{@app_name}_web.ex", web_module_contents(app))
+    in_tmp_project(test, deps, fn ->
+      File.mkdir_p!("lib/#{app}_web")
+      File.write!("lib/#{app}_web/#{app}_web.ex", web_module_contents(app))
 
+      func.()
+    end)
+  end
+
+  def in_tmp_ecto_project(test, func) do
+    app = @test_app_name
+
+    in_tmp_project(test, [:ecto_sql, :postgrex], fn ->
+      File.mkdir_p!("lib/#{app}")
+      File.write!("lib/#{app}/repo.ex", repo_module_contents(app))
+      File.mkdir_p!("config")
+      File.write!("config/config.exs", config_for_ecto_contents(app))
       func.()
     end)
   end
 
   def in_tmp_live_umbrella_project(test, func) do
     in_tmp_umbrella_project(test, fn ->
-      File.mkdir_p!("#{@app_name}/lib")
-      File.mkdir_p!("#{@app_name}_web/lib")
-      File.touch!("#{@app_name}/lib/#{@app_name}.ex")
-      File.touch!("#{@app_name}_web/lib/#{@app_name}_web.ex")
+      File.mkdir_p!("#{@test_app_name}/lib")
+      File.mkdir_p!("#{@test_app_name}_web/lib")
+      File.touch!("#{@test_app_name}/lib/#{@test_app_name}.ex")
+      File.touch!("#{@test_app_name}_web/lib/#{@test_app_name}_web.ex")
       func.()
     end)
   end
@@ -69,8 +92,6 @@ defmodule MixHelper do
   def in_tmp_project(which, deps, function) do
     conf_before = Application.get_env(@app_name, :generators) || []
     path = Path.join([tmp_path(), random_string(10), to_string(which)])
-    project_deps_path = Mix.Project.deps_path()
-    project_build_path = Mix.Project.build_path()
 
     try do
       File.rm_rf!(path)
@@ -83,32 +104,14 @@ defmodule MixHelper do
         File.write!("mix.exs", mixfile_contents(@test_app_name, deps))
         File.write!("test/test_helper.exs", "ExUnit.start()\n")
 
-        unless Enum.empty?(deps) do
-          # can't copy mix.lock because I think the hashes include the file creation date,
-          # but copying all deps & build from the parent project takes less (1/2) time when
-          # the test requires any of them, even though it recompiles.
-          # Enum.each(deps, fn dep -> copy_dep(dep, project_deps_path, project_build_path) end)
-          # I also tried copying deps/builds with `System.cmd("cp -a") but still get a
-          # dependencies out of date error with copied mix file and no "mix deps.get"
-
-          deps_path = Mix.Project.deps_path()
-          build_path = Mix.Project.build_path()
-
-          File.cp_r!(
-            project_build_path,
-            build_path
-          )
-
-          File.cp_r!(
-            project_deps_path,
-            deps_path
-          )
-        end
-
         in_project(@test_app_name, path, fn _module ->
           function.()
         end)
       end)
+    rescue
+      e ->
+        IO.puts(Exception.format(:error, e, __STACKTRACE__))
+        reraise e, __STACKTRACE__
     after
       File.rm_rf!(path)
       Application.put_env(@app_name, :generators, conf_before)
@@ -164,7 +167,7 @@ defmodule MixHelper do
       is_list(match) ->
         assert_file(file, &Enum.each(match, fn m -> assert &1 =~ m end))
 
-      is_binary(match) or Regex.regex?(match) ->
+      is_binary(match) or Kernel.is_struct(match) ->
         assert_file(file, &assert(&1 =~ match))
 
       is_function(match, 1) ->
@@ -192,11 +195,16 @@ defmodule MixHelper do
       use Mix.Project
 
       def project do
-        [app: #{inspect(app)}, version: "0.1.0", deps: deps()]
+        [
+          app: #{inspect(app)},
+          version: "0.1.0",
+          deps: deps(),
+          prune_code_paths: false
+        ]
       end
 
       def application do
-        [applications: [:logger]]
+        [extra_applications: [:logger]]
       end
 
       defp deps do
@@ -233,48 +241,37 @@ defmodule MixHelper do
     """
   end
 
+  def repo_module_contents(app) do
+    """
+    defmodule #{Macro.camelize(to_string(app))}.Repo do
+      use Ecto.Repo,
+      otp_app: :#{app},
+      adapter: Ecto.Adapters.Postgres
+    end
+    """
+  end
+
+  def config_for_ecto_contents(app) do
+    app_module = Macro.camelize(to_string(app))
+
+    """
+    use Mix.Config
+    config :#{app}, ecto_repos: [#{app_module}.Repo]
+    config :#{app}, #{app_module}.Repo,
+      database: "#{@app_name}",
+      username: "user",
+      password: "pass",
+      hostname: "localhost"
+    """
+  end
+
   def get_dep(dep) when is_tuple(dep), do: dep
 
   def get_dep(dep) when is_atom(dep) do
-    dep_spec = Keyword.get(Mix.Project.config()[:deps], dep) || @deps[dep]
-    {dep, dep_spec}
-  end
-
-  def copy_dep(dep, project_deps_path, project_build_path) do
-    deps_path = Mix.Project.deps_path()
-    build_path = Mix.Project.build_path()
-
-    dep =
-      cond do
-        is_tuple(dep) ->
-          dep
-          |> Tuple.to_list()
-          |> List.first()
-          |> Kernel.to_string()
-
-        true ->
-          to_string(dep)
-      end
-
-    IO.puts("project_deps_path: #{inspect(project_deps_path)}")
-    IO.puts("dep: #{inspect(dep)}")
-    proj_dep = Path.join(project_deps_path, dep)
-    proj_build = Path.join([project_build_path, "lib", dep])
-
-    test_dep = Path.join(deps_path, dep)
-    test_build = Path.join([build_path, "lib", dep])
-
-    IO.puts("copying \n`#{proj_dep}`\nto\n`#{test_dep}` >> #{File.exists?(proj_dep)}")
-
-    if File.exists?(proj_dep) do
-      File.cp_r!(proj_dep, test_dep)
-    end
-
-    IO.puts("copying \n`#{proj_build}`\nto\n`#{test_build}` >> #{File.exists?(proj_build)}")
-
-    if File.exists?(proj_build) do
-      File.cp_r!(proj_build, test_build)
-    end
+    dep_spec = List.keyfind(Mix.Project.config()[:deps], dep, 0, @deps[dep])
+    # {dep, dep_spec}
+    dep_spec
+    # |> dbg()
   end
 
   def umbrella_mixfile_contents do
@@ -304,23 +301,26 @@ defmodule MixHelper do
     end
   end
 
-  def run_mix_test(test, opts \\ []) do
-    log("compiling tmp_project for `#{test}`...", opts)
+  def compile(test, opts \\ []) do
+    log("compiling in tmp_project for `#{test}`...", opts)
 
-    {output, _exit_status} =
-      System.cmd("mix", ~w(test  --no-deps-check --no-start), stderr_to_stdout: true)
-
-    log("output:\n#{output}", opts)
-    [deps_build_output | test_output] = String.split(output, "==> #{@test_app_name}\nCompiling")
-
-    cond do
-      length(test_output) < 1 ->
-        {:error, deps_build_output}
-
-      true ->
-        {:ok, Enum.join(test_output)}
+    with :ok <- Mix.Task.run("deps.get"),
+         {:ok, []} <- Mix.Task.run("compile", ["--return-errors"]) do
+      log("successfully compiled", opts)
+      :ok
+    else
+      {_, diagnostics} ->
+        log("error", verbose: true)
+        print_diagnostics(diagnostics)
     end
   end
+
+  defp print_diagnostics(diagnostics) do
+    Enum.map(diagnostics, fn d ->
+      log("error\n#{d.message}", verbose: true)
+    end)
+  end
+
 
   def log(msg, opts) do
     if opts[:verbose] do
@@ -334,17 +334,26 @@ defmodule MixHelper do
     IO.puts("----------------------------------------------")
   end
 
-  def inspect_app_dir(also \\ nil) do
+  def inspect_app_dir(opts \\ []) do
     IO.puts("----------------------------------------------")
     IO.puts("File.cwd!(): #{inspect(File.cwd!())}")
     IO.puts("File.ls!(): #{inspect(File.ls!())}")
 
-    if also do
-      IO.puts("File.ls!(#{also}): #{inspect(File.ls!(also))}")
-    else
-      {tree, _x} = System.cmd("tree", [])
-      IO.puts(tree)
-    end
+    {dir, opts} = Keyword.pop(opts, :dir)
+    tree_opts = (dir && [dir]) || []
+
+    tree_opts =
+      Enum.reduce(opts, tree_opts, fn
+        {:only, value}, acc -> acc ++ ["-P"] ++ value
+        {:except, value}, acc -> acc ++ ["-I"] ++ value
+        {:dirs, true}, acc -> acc ++ ["-d"]
+        {:prune, true}, acc -> acc ++ ["--prune"]
+        {:depth, depth}, acc -> acc ++ ["-L", depth]
+      end)
+
+    IO.puts("tree_opts: #{inspect(tree_opts)}")
+    {tree, _x} = System.cmd("tree", tree_opts)
+    IO.puts(tree)
 
     # hi
     IO.puts("----------------------------------------------")
