@@ -1,7 +1,9 @@
-defmodule Mix.Ecto do
+defmodule Mix.EctoCopy do
   @moduledoc """
   Conveniences for writing Ecto related Mix tasks.
   """
+
+  # region [ copied from https://github.com/elixir-ecto/ecto@lib/mix/ecto.ex ]
 
   @doc """
   Parses the repository option from the given command line args list.
@@ -21,6 +23,8 @@ defmodule Mix.Ecto do
   end
 
   defp parse_repo([], []) do
+    IO.puts("parse_repo")
+
     apps =
       if apps_paths = Mix.Project.apps_paths() do
         # TODO: Use the proper ordering from Mix.Project.deps_apps
@@ -29,6 +33,11 @@ defmodule Mix.Ecto do
       else
         [Mix.Project.config()[:app]]
       end
+
+    IO.puts("apps: #{inspect(apps)}")
+
+    require IEx
+    IEx.pry()
 
     apps
     |> Enum.flat_map(fn app ->
@@ -163,4 +172,48 @@ defmodule Mix.Ecto do
       )
     end
   end
+
+  # endregion [ copied from https://github.com/elixir-ecto/ecto_sql@lib/mix/ecto_sql.ex  ]
+
+  # region [ copied from https://github.com/elixir-ecto/ecto_sql@lib/mix/ecto_sql.ex ]
+
+  def ensure_migrations_paths(repo, opts) do
+    paths = Keyword.get_values(opts, :migrations_path)
+    paths = if paths == [], do: [Path.join(source_repo_priv(repo), "migrations")], else: paths
+
+    if not Mix.Project.umbrella?() do
+      for path <- paths, not File.dir?(path) do
+        raise_missing_migrations(Path.relative_to_cwd(path), repo)
+      end
+    end
+
+    paths
+  end
+
+  defp raise_missing_migrations(path, repo) do
+    Mix.raise("""
+    Could not find migrations directory #{inspect(path)}
+    for repo #{inspect(repo)}.
+
+    This may be because you are in a new project and the
+    migration directory has not been created yet. Creating an
+    empty directory at the path above will fix this error.
+
+    If you expected existing migrations to be found, please
+    make sure your repository has been properly configured
+    and the configured path exists.
+    """)
+  end
+
+  @doc """
+  Returns the private repository path relative to the source.
+  """
+  def source_repo_priv(repo) do
+    config = repo.config()
+    priv = config[:priv] || "priv/#{repo |> Module.split() |> List.last() |> Macro.underscore()}"
+    app = Keyword.fetch!(config, :otp_app)
+    Path.join(Mix.Project.deps_paths()[app] || File.cwd!(), priv)
+  end
+
+  # endregion [ copied from https://github.com/elixir-ecto/ecto_sql@lib/mix/ecto_sql.ex  ]
 end
