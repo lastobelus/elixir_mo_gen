@@ -42,6 +42,17 @@ defmodule ElixirMoGen.Migration.ColumnTest do
              ) ==
                {:error, "invalid type `bogus` for column `size`"}
     end
+
+    test "handles type aliases" do
+      assert Column.parse_single_column(
+               "size:f",
+               "size"
+             ) ==
+               {:ok,
+                %{
+                  size: %{type: :float}
+                }}
+    end
   end
 
   describe "single_column_from_migration" do
