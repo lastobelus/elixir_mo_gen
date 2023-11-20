@@ -30,7 +30,7 @@ defmodule ElixirMoGen.Migration.Column do
     utc: :utc_datetime
   }
 
-  def parse_single_column(arg, name, migration) do
+  def parse_single_column(arg, name) do
     [column | opts] = String.split(arg, ":")
 
     name = String.trim(name)
@@ -44,21 +44,25 @@ defmodule ElixirMoGen.Migration.Column do
         {:error, "column `#{name}` parsed from migration name does not match `#{column}`"}
 
       true ->
-        parse_column(column, opts, migration)
+        parse_column(column, opts)
     end
   end
 
-  def parse_column(column, [], _migration) do
-    %{column => %{type: :string}}
+  def single_column_from_migration(migration) do
+    %{String.to_atom(migration["column"]) => %{type: :string}}
   end
 
-  def parse_column(column, [type], _migration) do
+  def parse_column(column, []) do
+    %{String.to_atom(column) => %{type: :string}}
+  end
+
+  def parse_column(column, [type]) do
     case validate_type(type) do
       nil ->
         {:error, "invalid type `#{type}` for column `#{column}`"}
 
       type ->
-        {:ok, %{column => %{type: type}}}
+        {:ok, %{String.to_atom(column) => %{type: type}}}
     end
   end
 
