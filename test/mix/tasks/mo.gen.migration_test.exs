@@ -134,5 +134,53 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
         end)
       end)
     end
+
+    test "it sets not null with --no-null", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(
+          add_size_to_widgets :float -r #{inspect(Repo)} -q
+          --no-null
+        ))
+
+        assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
+          assert_file_compiles(path)
+          assert file =~ ~r(add :size, :float, null: false)
+          IO.puts(file)
+        end)
+      end)
+    end
+
+    test "it sets default value with --default", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(
+          add_size_to_widgets :float -r #{inspect(Repo)} -q
+          --default 10.0
+        ))
+
+        assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
+          assert_file_compiles(path)
+          assert file =~ ~r(add :size, :float, default: 10.0)
+          IO.puts(file)
+        end)
+      end)
+    end
+
+    test "it sets multiple options correctly", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(
+          add_size_to_widgets :float -r #{inspect(Repo)} -q
+          --default 10.0
+          --no-null
+          --comment
+        ) ++ ["Add size to widgets"])
+
+        assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
+          assert_file_compiles(path)
+          assert file =~ ~r(add :size, :float, default: 10.0, null: false\s+# Add size to widgets)
+          IO.puts(file)
+        end)
+      end)
+    end
+
   end
 end

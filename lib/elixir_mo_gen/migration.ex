@@ -8,11 +8,30 @@ defmodule ElixirMoGen.Migration do
     end
   end
 
-  def column_options_template(%{comment: comment}) do
-    "   # #{comment}"
+
+  def column_options_template(spec) do
+    {comment, spec} = Map.pop(spec, :comment)
+    {_, spec} = Map.pop(spec, :type)
+
+    s =
+      cond do
+        Enum.empty?(spec) -> ""
+        true -> ", " <> to_opts(spec)
+      end
+
+    cond do
+      comment -> s <> "   # #{comment}"
+      true -> s
+    end
   end
-  def column_options_template(_column) do
-    ""
+
+  defp to_opts(spec) do
+    Enum.join(
+      Enum.map(spec, fn {k, v} ->
+        "#{k}: #{v}"
+      end),
+      ", "
+    )
   end
 
   # I want to be able to test this directly, at least as I'm developing
