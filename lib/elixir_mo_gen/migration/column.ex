@@ -49,7 +49,7 @@ defmodule ElixirMoGen.Migration.Column do
   end
 
   def single_column_from_migration(migration) do
-    %{String.to_atom(migration["column"]) => %{type: :string}}
+    %{String.to_atom(migration[:column]) => %{type: :string}}
   end
 
   def parse_column(column, []) do

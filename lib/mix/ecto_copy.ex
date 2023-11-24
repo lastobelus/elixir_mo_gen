@@ -10,16 +10,12 @@ defmodule Mix.EctoCopy do
 
   If no repo option is given, it is retrieved from the application environment.
   """
-  def parse_repo(args) do
-    parse_repo(args, [])
+  def parse_repo(repos) do
+    parse_repo(repos, [])
   end
 
-  defp parse_repo([key, value | t], acc) when key in ~w(--repo -r) do
-    parse_repo(t, [Module.concat([value]) | acc])
-  end
-
-  defp parse_repo([_ | t], acc) do
-    parse_repo(t, acc)
+  defp parse_repo([repo | t], acc)  do
+    parse_repo(t, [Module.concat([repo]) | acc])
   end
 
   defp parse_repo([], []) do
@@ -34,10 +30,7 @@ defmodule Mix.EctoCopy do
         [Mix.Project.config()[:app]]
       end
 
-    IO.puts("apps: #{inspect(apps)}")
-
-    require IEx
-    IEx.pry()
+    dbg(apps)
 
     apps
     |> Enum.flat_map(fn app ->

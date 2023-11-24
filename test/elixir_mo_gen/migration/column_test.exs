@@ -58,7 +58,7 @@ defmodule ElixirMoGen.Migration.ColumnTest do
   describe "single_column_from_migration" do
     test "returns type :string" do
       assert Column.single_column_from_migration(
-        %{"column" => "size", "table" => "widgets"}
+        %{column: "size", table: "widgets"}
       ) ==
         %{size: %{type: :string}}
     end

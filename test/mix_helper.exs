@@ -36,6 +36,7 @@ defmodule MixHelper do
     path = Path.join([tmp_path(), random_string(10), to_string(which)])
     IO.puts("\n-------------- in_tmp '#{which}' START-------------")
     IO.inspect(path, label: "in_tmp: path")
+
     try do
       File.rm_rf!(path)
       File.mkdir_p!(path)
@@ -44,13 +45,13 @@ defmodule MixHelper do
       e ->
         IO.puts("MixHelper.in_tmp.rescue")
         reraise e, __STACKTRACE__
-  after
+    after
       IO.puts("after running in_tmp, removing #{path}")
       File.rm_rf!(path)
     end
+
     IO.puts("\n-------------- in_tmp '#{which}' END-------------")
   end
-
 
   def in_tmp_phx_project(test, func, deps \\ [:phoenix]) do
     app = @test_app_name
@@ -179,6 +180,98 @@ defmodule MixHelper do
     end
   end
 
+  def assert_timestamped_file(file, match) do
+    cond do
+      is_list(match) ->
+        assert_timestamped_file(file, &Enum.each(match, fn m -> assert &1 =~ m end))
+
+      is_binary(match) or Kernel.is_struct(match) ->
+        assert_timestamped_file(file, &assert(&1 =~ match))
+
+      is_function(match, 2) ->
+        {basename, dir, file} = find_timestamped_file(file)
+        assert(file, "Expected #{dir}/DDDDDDDDDDDDDD_#{basename} to exist, but does not")
+        path = Path.join(dir, file)
+        match.(path, File.read!(path))
+
+      true ->
+        raise inspect({file, match})
+    end
+  end
+
+  def assert_timestamped_file(file) do
+    {basename, dir, file} = find_timestamped_file(file)
+    assert(file, "Expected #{dir}/DDDDDDDDDDDDDD_#{basename} to exist, but does not")
+  end
+
+  def find_timestamped_file(path) do
+    dir = path |> Path.expand() |> Path.dirname()
+    basename = path |> Path.basename()
+    assert File.dir?(dir), "Expected #{dir} to be a directory, but is not"
+
+    file =
+      File.ls!(dir)
+      |> Enum.find(fn f ->
+        String.match?(f, ~r/^[\d]{14}_#{basename}/) && File.regular?(Path.join(dir, f))
+      end)
+
+    {basename, dir, file}
+  end
+
+  def assert_file_compiles(file) do
+    assert File.regular?(file), "Expected #{file} to exist, but does not"
+    msgid = Ecto.UUID.generate
+    output =
+      capture_io(:stderr, fn ->
+        try do
+          Code.eval_file(file)
+        rescue
+          e -> send(self(), {msgid, e})
+        end
+      end)
+
+      receive do
+        {^msgid, err} ->
+          flunk """
+          Expected #{err.file}
+          ```
+          #{File.read!(file)}```
+          to compile, but #{err.description}
+
+          #{output}
+          """
+      after
+        0 -> file
+      end
+  end
+
+  def assert_code_compiles(code, path \\ "") do
+    msgid = Ecto.UUID.generate
+    output =
+      capture_io(:stderr, fn ->
+        try do
+          Code.eval_string(code)
+        rescue
+          e ->
+            send(self(), {msgid, e})
+        end
+      end)
+
+      receive do
+        {^msgid, err} ->
+          flunk """
+          Expected #{path}
+          ```
+          #{code}```
+          to compile, but #{err.description}
+
+          #{output}
+          """
+        after
+          0 -> nil
+        end
+  end
+
   def with_generator_env(new_env, fun) do
     Application.put_env(@app_name, :generators, new_env)
 
@@ -190,7 +283,7 @@ defmodule MixHelper do
   end
 
   def mixfile_contents(app, deps \\ []) do
-    """
+    s = """
     defmodule #{Macro.camelize(to_string(app))}.Mixfile do
       use Mix.Project
 
@@ -212,6 +305,9 @@ defmodule MixHelper do
       end
     end
     """
+
+    # IO.puts(s)
+    s
   end
 
   def web_module_contents(app) do
@@ -255,7 +351,8 @@ defmodule MixHelper do
     app_module = Macro.camelize(to_string(app))
 
     """
-    use Mix.Config
+    import Config
+
     config :#{app}, ecto_repos: [#{app_module}.Repo]
     config :#{app}, #{app_module}.Repo,
       database: "#{@app_name}",
@@ -293,13 +390,13 @@ defmodule MixHelper do
     """
   end
 
-  def flush do
-    receive do
-      _ -> flush()
-    after
-      0 -> :ok
-    end
-  end
+  # def flush do
+  #   receive do
+  #     _ -> flush()
+  #   after
+  #     0 -> :ok
+  #   end
+  # end
 
   def compile(test, opts \\ []) do
     log("compiling in tmp_project for `#{test}`...", opts)
@@ -320,7 +417,6 @@ defmodule MixHelper do
       log("error\n#{d.message}", verbose: true)
     end)
   end
-
 
   def log(msg, opts) do
     if opts[:verbose] do
