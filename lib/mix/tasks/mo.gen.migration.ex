@@ -22,6 +22,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     migrations_path: :string,
     repo: [:string, :keep],
     prefix: :string,
+
     # column migrations
     comment: :string,
     default: :string,
@@ -31,6 +32,8 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     size: :integer,
     scale: :integer,
     precision: :integer,
+    index: :boolean,
+
     # index migrations
     concurrently: :boolean,
     where: :string,
@@ -58,7 +61,14 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   ]
 
   @default_opts [
-    quiet: false
+    quiet: false,
+    index: true
+  ]
+
+  @env_opts [
+    prefix: "MO_GEN_MIGRATION_PREFIX",
+    migrations_path: "MO_GEN_MIGRATION_PATH",
+    quiet: "MO_GEN_MIGRATION_QUIET",
   ]
 
   @column_opts [
@@ -69,7 +79,8 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     :primary_key,
     :size,
     :scale,
-    :precision
+    :precision,
+    :index
   ]
 
   @index_opts [
@@ -112,7 +123,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   end
 
   def run(args) do
-    IO.inspect(args)
+    # IO.inspect(args)
     {opts, args} = parse_opts!(args)
     quiet = Keyword.get(opts, :quiet)
     ElixirMoGen.print_version_banner("mo.gen.mod", quiet: quiet)
@@ -137,9 +148,9 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     [migration_name | args] = args
     repos = Mix.EctoCopy.parse_repo(Keyword.get_values(opts, :repo))
 
-    IO.puts("opts: #{inspect(opts)}")
-    IO.puts("args: #{inspect(args)}")
-    IO.puts("migration_name: #{inspect(migration_name)}")
+    # IO.puts("opts: #{inspect(opts)}")
+    # IO.puts("args: #{inspect(args)}")
+    # IO.puts("migration_name: #{inspect(migration_name)}")
     # IO.puts("Migration.migration_module: #{inspect(Migration.migration_module())}")
     # IO.puts("repos: #{inspect(repos)}")
 
@@ -151,19 +162,29 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
           raise_with_help("unable to interpret migration `#{migration_name}`", :unknown_cmd)
 
         {cmd, migration} ->
-          IO.puts("cmd: #{inspect(cmd)}")
-          IO.puts("migration: #{inspect(migration)}")
+          # IO.puts("cmd: #{inspect(cmd)}")
+          # IO.puts("migration: #{inspect(migration)}")
 
           migration =
             migration
             |> add_migration_opts(opts)
             |> add_cmd_opts(cmd, args, opts)
             |> setup_file_path(migration_name, repo)
-            |> dbg
+            |> atomize_values([:table, :prefix])
 
-          IO.puts("running #{inspect(cmd)}")
+          # IO.puts("running #{inspect(cmd)}")
           IO.inspect(migration, label: "migration")
           generate_migration(migration_name, repo, migration, cmd, args, opts)
+      end
+    end)
+  end
+
+  defp atomize_values(migration, keys) do
+    Enum.reduce(keys, migration, fn k, acc ->
+      cond do
+        Map.has_key?(acc, k) ->
+          Map.put(acc, k, String.to_atom(acc[k]))
+        true -> acc
       end
     end)
   end
@@ -171,11 +192,16 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   defp parse_opts!(args) do
     {opts, parsed} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
 
-    merged_opts = Keyword.merge(@default_opts, opts)
+    merged_opts = opts_from_env()
+    |> Keyword.merge(@default_opts)
+    |> Keyword.merge(opts)
 
     {merged_opts, parsed}
   end
 
+  defp opts_from_env do
+    Enum.map(@env_opts, fn {opt, env} -> {opt, System.get_env(env)} end)
+  end
   def raise_with_help(msg) do
     raise_with_help(msg, :general)
   end

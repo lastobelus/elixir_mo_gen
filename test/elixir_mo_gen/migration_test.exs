@@ -29,26 +29,56 @@ defmodule ElixirMoGen.MigrationTest do
   describe "add_columns_template/1" do
     test "adds a single column" do
       assert Migration.add_columns_template(%{
-               columns: %{size: %{type: :string}},
-               table: "widgets"
+               columns: %{size: %{type: :string, index: false}},
+               table: :widgets
              }) =~
                """
-                   alter table("widgets") do
+                   alter table(:widgets) do
                      add :size, :string
                    end
                """
     end
 
-    test "adds a multiple columns" do
+    test "adds a single column with index" do
       assert Migration.add_columns_template(%{
-               columns: %{name: %{type: :string}, size: %{type: :float}},
-               table: "widgets"
+               columns: %{size: %{type: :string, index: true}},
+               table: :widgets
              }) =~
                """
-                   alter table("widgets") do
+                   alter table(:widgets) do
+                     add :size, :string
+                   end
+
+                   create index(:widgets, [:size])
+               """
+    end
+
+    test "adds multiple columns" do
+      assert Migration.add_columns_template(%{
+               columns: %{name: %{type: :string, index: false}, size: %{type: :float, index: false}},
+               table: :widgets
+             }) =~
+               """
+                   alter table(:widgets) do
                      add :name, :string
                      add :size, :float
                    end
+               """
+    end
+
+    test "adds multiple columns with indexes" do
+      assert Migration.add_columns_template(%{
+               columns: %{name: %{type: :string, index: true}, size: %{type: :float, index: true}},
+               table: :widgets
+             }) =~
+               """
+                   alter table(:widgets) do
+                     add :name, :string
+                     add :size, :float
+                   end
+
+                   create index(:widgets, [:name])
+                   create index(:widgets, [:size])
                """
     end
   end

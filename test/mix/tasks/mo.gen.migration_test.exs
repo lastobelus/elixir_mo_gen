@@ -130,7 +130,6 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
         assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
           assert_file_compiles(path)
           assert file =~ ~r(add :size, :float\s+# Add size to widgets)
-          IO.puts(file)
         end)
       end)
     end
@@ -145,7 +144,6 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
         assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
           assert_file_compiles(path)
           assert file =~ ~r(add :size, :float, null: false)
-          IO.puts(file)
         end)
       end)
     end
@@ -160,7 +158,6 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
         assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
           assert_file_compiles(path)
           assert file =~ ~r(add :size, :float, default: 10.0)
-          IO.puts(file)
         end)
       end)
     end
@@ -177,10 +174,44 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
         assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
           assert_file_compiles(path)
           assert file =~ ~r(add :size, :float, default: 10.0, null: false\s+# Add size to widgets)
-          IO.puts(file)
         end)
       end)
     end
 
+    test "it adds an index for the column", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(add_size_to_widgets -r #{inspect(Repo)} -q))
+
+        assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
+          assert_file_compiles(path)
+          assert file =~ "create index(\"widgets\", [:size])"
+        end)
+      end)
+    end
+
+    test "it skips index with --no-index", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(add_size_to_widgets -r #{inspect(Repo)} --no-index -q))
+
+        assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
+          assert_file_compiles(path)
+          refute file =~ "create index"
+        end)
+      end)
+    end
+
+    test "it uses --prefix", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(add_name_to_widgets -r #{inspect(Repo)} --prefix foo -q))
+
+        assert_timestamped_file(migration_file("repo", "add_name_to_widgets"), fn path, file ->
+          assert_file_compiles(path)
+          IO.puts(file)
+          assert file =~ "alter table(:widgets, prefix: :foo) do"
+          assert file =~ ~r(add :name, :string)
+          assert file =~ "create index(:widgets, [:name], prefix: :foo)"
+        end)
+      end)
+    end
   end
 end
