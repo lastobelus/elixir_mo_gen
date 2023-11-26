@@ -92,8 +92,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   ]
 
   @migration_types %{
-    add_column: ~r/^add_(?<column>(?(?!index).)*)_to_(?<table>.*s$)/,
-    add_columns: ~r/^add_to_(?<table>.*s$)/,
+    add_columns: ~r/^add_(?:(?<column>(?(?!index).)*)_)?to_(?<table>.*s$)/,
     add_index: ~r/add_(?:(?<index_name>(?(?!index).)*)_)?index_to_(?<table>.*s$)/,
     add_unique_index: ~r/add_(?:(?<index_name>(?(?!index).)*)_)?unique_index_to_(?<table>.*s$)/,
     remove_column: ~r/^remove_(?<column>(?(?!index).)*)_from_(?<table>.*s$)/,
@@ -102,8 +101,10 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   }
 
   @migration_cmds_usage %{
-    add_column: ["add_COLUMNNAME_to_TABLENAME :TYPE", "# type defaults to string if ommitted"],
-    add_columns: ["add_to_TABLENAME COLUMNNAME:TYPE COLUMNNAME:TYPE"],
+    add_columns: [
+      "add_COLUMNNAME_to_TABLENAME :TYPE",
+      "# type defaults to string if ommitted",
+      "add_to_TABLENAME COLUMNNAME:TYPE COLUMNNAME:TYPE ..."],
     add_index: ["add_OPTIONALINDEXNAME_index_to_TABLENAME [COLUMNONE,COLUMN2]"],
     add_unique_index: ["add_OPTIONALINDEXNAME_unique_index_to_TABLENAME"],
     remove_column: [
@@ -158,7 +159,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     Enum.map(repos, fn repo ->
       migration_name = Macro.underscore(migration_name)
 
-      case parse_migration_type(migration_name) do
+      case parse_migration_type(migration_name, args) do
         nil ->
           raise_with_help("unable to interpret migration `#{migration_name}`", :unknown_cmd)
 
@@ -313,7 +314,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
       IO.ANSI.color(@cli_theme_fg) <> text <> IO.ANSI.reset()
   end
 
-  def parse_migration_type(migration_name) do
+  def parse_migration_type(migration_name, args) do
     Enum.find_value(@migration_types, fn {cmd, regex} ->
       case Regex.named_captures(regex, migration_name) do
         nil -> false
@@ -330,7 +331,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     Enum.into(Keyword.take(opts, [:comment, :prefix]), migration)
   end
 
-  defp add_cmd_opts(migration, :add_column, args, opts) do
+  defp add_cmd_opts(migration, :add_columns, args, opts) do
     case length(args) do
       0 ->
         columns = Column.single_column_from_migration(migration)
@@ -345,11 +346,11 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
             |> add_columns(columns, opts)
 
           {:error, msg} ->
-            raise_with_help(msg, :add_column)
+            raise_with_help(msg, :add_columns)
         end
 
       _ ->
-        raise_with_help("too many arguments for `add_COLUMN_to_TABLE`", :add_column)
+        raise_with_help("too many arguments for `add_COLUMN_to_TABLE`", :add_columns)
     end
   end
 
@@ -412,7 +413,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     file
   end
 
-  defp add_changes(migration, :add_column) do
+  defp add_changes(migration, :add_columns) do
     Map.put(migration, :change, Migration.add_columns_template(migration))
   end
 

@@ -75,47 +75,48 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
   end
 
   test "parse_migration_type/1" do
-    parse = &Gen.Migration.parse_migration_type/1
+    parse = &Gen.Migration.parse_migration_type/2
 
     assert(
-      parse.("add_bob_to_products") ==
-        {:add_column, %{column: "bob", table: "products"}}
+      parse.("add_bob_to_products", []) ==
+        {:add_columns, %{column: "bob", table: "products"}}
     )
 
     assert(
-      parse.("add_bob_index_to_products") ==
+      parse.("add_bob_index_to_products", []) ==
         {:add_index, %{index_name: "bob", table: "products"}}
     )
 
     assert(
-      parse.("add_index_to_products") ==
+      parse.("add_index_to_products", []) ==
         {:add_index, %{index_name: "", table: "products"}}
     )
 
     assert(
-      parse.("add_to_products") ==
-        {:add_columns, %{table: "products"}}
+      parse.("add_to_products", []) ==
+        {:add_columns, %{table: "products", column: ""}}
     )
 
     assert(
-      parse.("remove_bob_from_products") ==
+      parse.("remove_bob_from_products", []) ==
         {:remove_column, %{column: "bob", table: "products"}}
     )
 
     assert(
-      parse.("remove_from_products") ==
+      parse.("remove_from_products", []) ==
         {:remove_columns, %{table: "products"}}
     )
 
     assert(
-      parse.("remove_bob_index_from_products") ==
+      parse.("remove_bob_index_from_products", []) ==
         {:remove_index, %{index_name: "bob", table: "products"}}
     )
 
     assert(
-      parse.("remove_index_from_products") ==
+      parse.("remove_index_from_products", []) ==
         {:remove_index, %{table: "products", index_name: ""}}
     )
+
   end
 
   describe "add_COLUMN_to_TABLE migration" do
