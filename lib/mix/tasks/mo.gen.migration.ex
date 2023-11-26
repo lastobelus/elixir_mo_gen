@@ -69,6 +69,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     prefix: "MO_GEN_MIGRATION_PREFIX",
     migrations_path: "MO_GEN_MIGRATION_PATH",
     quiet: "MO_GEN_MIGRATION_QUIET",
+    index: "MO_GEN_MIGRATION_INDEX"
   ]
 
   @column_opts [
@@ -173,7 +174,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
             |> atomize_values([:table, :prefix])
 
           # IO.puts("running #{inspect(cmd)}")
-          IO.inspect(migration, label: "migration")
+          # IO.inspect(migration, label: "migration")
           generate_migration(migration_name, repo, migration, cmd, args, opts)
       end
     end)
@@ -200,7 +201,25 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   end
 
   defp opts_from_env do
-    Enum.map(@env_opts, fn {opt, env} -> {opt, System.get_env(env)} end)
+    Enum.map(@env_opts, fn {opt, env} ->
+      {opt, coerced_env_value(opt, System.get_env(env))}
+    end)
+    |> Enum.reject(fn {_, v} -> is_nil(v) end)
+  end
+
+  defp coerced_env_value(opt, val) do
+    case @switches[opt] do
+      :boolean ->
+        case val do
+          "true" -> true
+          "false" -> false
+          "1" -> true
+          "0" -> false
+          nil -> nil
+          _ -> raise_with_help("invalid value for #{@env_opts[opt]}: #{val}")
+        end
+        _ -> val
+    end
   end
   def raise_with_help(msg) do
     raise_with_help(msg, :general)

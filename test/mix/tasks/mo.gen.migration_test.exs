@@ -15,7 +15,29 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
 
   @moduletag :tmp_dir
 
+  @mo_gen_env_vars [
+    "MO_GEN_MIGRATION_PREFIX",
+    "MO_GEN_MIGRATION_PATH",
+    "MO_GEN_MIGRATION_QUIET",
+    "MO_GEN_MIGRATION_INDEX"
+  ]
+
   setup do
+    previous_env = System.get_env()
+
+    Enum.each(@mo_gen_env_vars, fn env ->
+      System.delete_env(env)
+    end)
+
+    on_exit(fn ->
+      Enum.each(@mo_gen_env_vars, fn env ->
+        System.delete_env(env)
+      end)
+
+      Map.filter(previous_env, fn {k, _} -> String.starts_with?(k, "MO_GEN_") end)
+      |> System.put_env()
+    end)
+
     Mix.Task.clear()
     :ok
   end
@@ -184,7 +206,7 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
 
         assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
           assert_file_compiles(path)
-          assert file =~ "create index(\"widgets\", [:size])"
+          assert file =~ "create index(:widgets, [:size])"
         end)
       end)
     end
@@ -206,7 +228,21 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
 
         assert_timestamped_file(migration_file("repo", "add_name_to_widgets"), fn path, file ->
           assert_file_compiles(path)
-          IO.puts(file)
+          assert file =~ "alter table(:widgets, prefix: :foo) do"
+          assert file =~ ~r(add :name, :string)
+          assert file =~ "create index(:widgets, [:name], prefix: :foo)"
+        end)
+      end)
+    end
+
+    test "it uses --prefix from env MO_GEN_MIGRATION_PREFIX", config do
+      System.put_env("MO_GEN_MIGRATION_PREFIX", "foo")
+
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(add_name_to_widgets -r #{inspect(Repo)} -q))
+
+        assert_timestamped_file(migration_file("repo", "add_name_to_widgets"), fn path, file ->
+          assert_file_compiles(path)
           assert file =~ "alter table(:widgets, prefix: :foo) do"
           assert file =~ ~r(add :name, :string)
           assert file =~ "create index(:widgets, [:name], prefix: :foo)"
