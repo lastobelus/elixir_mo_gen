@@ -116,7 +116,6 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
       parse.("remove_index_from_products", []) ==
         {:remove_index, %{table: "products", index_name: ""}}
     )
-
   end
 
   describe "add_COLUMN_to_TABLE migration" do
@@ -127,7 +126,8 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
 
         assert_timestamped_file(migration, fn path, file ->
           assert_file_compiles(path)
-          assert file =~ "add :size, :string"
+          assert file =~ "Repo.Migrations.AddSizeToWidgets"
+          assert file =~ ~r/add :size, :string$/m
         end)
       end)
     end
@@ -138,7 +138,7 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
 
         assert_timestamped_file(migration_file("repo", "add_size_to_widgets"), fn path, file ->
           assert_file_compiles(path)
-          assert file =~ "add :size, :float"
+          assert file =~ ~r/add :size, :float$/m
         end)
       end)
     end
@@ -247,6 +247,139 @@ defmodule Mix.Tasks.Mo.Gen.MigrationTest do
           assert file =~ "alter table(:widgets, prefix: :foo) do"
           assert file =~ ~r(add :name, :string)
           assert file =~ "create index(:widgets, [:name], prefix: :foo)"
+        end)
+      end)
+    end
+  end
+
+  describe "add_to_TABLE columns migration" do
+    test "it handles first column in the migration name", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(add_size_to_widgets :float units:string -r #{inspect(Repo)} -q))
+        migration = migration_file("repo", "add_size_to_widgets")
+
+        assert_timestamped_file(migration, fn path, file ->
+          assert_file_compiles(path)
+          assert file =~ "add :size, :float"
+          assert file =~ "add :units, :string"
+          assert file =~ "create index(:widgets, [:size])"
+          assert file =~ "create index(:widgets, [:units])"
+        end)
+      end)
+    end
+
+    test "it handles descriptive name and fully specced columns", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(
+          ~w(add_measurement_to_widgets size:float units:string -r #{inspect(Repo)} -q)
+        )
+
+        migration = migration_file("repo", "add_measurement_to_widgets")
+
+        assert_timestamped_file(migration, fn path, file ->
+          assert_file_compiles(path)
+          assert file =~ "add :size, :float"
+          assert file =~ "add :units, :string"
+          assert file =~ "create index(:widgets, [:size])"
+          assert file =~ "create index(:widgets, [:units])"
+        end)
+      end)
+    end
+
+    test "it handles camelCase migration name", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(AddGirthMeasurementToWidgets :float -r #{inspect(Repo)} -q))
+
+        migration = migration_file("repo", "add_girth_measurement_to_widgets")
+
+        assert_timestamped_file(migration, fn path, file ->
+          assert_file_compiles(path)
+          assert file =~ "Repo.Migrations.AddGirthMeasurementToWidgets"
+          assert file =~ "add :girth_measurement, :float"
+          assert file =~ "create index(:widgets, [:girth_measurement])"
+        end)
+      end)
+    end
+
+    test "it handles camelCase column names", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(AddToWidgets GirthMeasurement:float -r #{inspect(Repo)} -q))
+
+        migration = migration_file("repo", "add_girth_measurement_to_widgets")
+
+        assert_timestamped_file(migration, fn path, file ->
+          assert_file_compiles(path)
+          assert file =~ "Repo.Migrations.AddGirthMeasurementToWidgets"
+          assert file =~ "add :girth_measurement, :float"
+          assert file =~ "create index(:widgets, [:girth_measurement])"
+        end)
+      end)
+    end
+
+    test "it handles empty name and adds column list to name", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(
+          ~w(add_to_widgets size:float units:string accuracy:integer -r #{inspect(Repo)} -q)
+        )
+
+        migration = migration_file("repo", "add_size_units_and_accuracy_to_widgets")
+
+        assert_timestamped_file(migration, fn path, file ->
+          assert_file_compiles(path)
+          assert file =~ "add :size, :float"
+          assert file =~ "add :units, :string"
+          assert file =~ "add :accuracy, :integer"
+          assert file =~ "create index(:widgets, [:size])"
+          assert file =~ "create index(:widgets, [:units])"
+          assert file =~ "create index(:widgets, [:accuracy])"
+        end)
+      end)
+    end
+
+    test "it handles column options in the column names", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(
+          add_special_columns_to_widgets
+          size:decimal{10,2}
+          serial:string{20}:uniq:index
+          required:string:no-null
+          store_id:references{store}
+          --no-index
+          -r #{inspect(Repo)} -q
+        ))
+
+        assert_timestamped_file(migration_file("repo", "add_special_columns_to_widgets"), fn path,
+                                                                                             file ->
+          assert_file_compiles(path)
+          IO.puts(file)
+          assert file =~ "add :serial, :string, size: 20, unique: true"
+          assert file =~ "add :size, :decimal, precision: 10, scale: 2"
+          assert file =~ "add :required, :string, null: false"
+          assert file =~ "add :store_id, references(:store)"
+
+          assert file =~ "create index(:widgets, [:serial])"
+
+          refute file =~ "create index(:widgets, [:required])"
+          refute file =~ "create index(:widgets, [:store_id])"
+          refute file =~ "create index(:widgets, [:size])"
+        end)
+      end)
+    end
+  end
+
+  describe "add_INDEX_index_to_TABLE migration" do
+    test "it adds single column index parsing column from name", config do
+      in_tmp_ecto_project(config.test, fn ->
+        Gen.Migration.run(~w(
+            add_name_index_to_persons
+            -r #{inspect(Repo)} -q))
+
+        migration = migration_file("repo", "add_name_index_to_persons")
+
+        assert_timestamped_file(migration, fn path, file ->
+          assert_file_compiles(path)
+          assert file =~ "Repo.Migrations.AddNameIndexToPersons"
+          assert file =~ "create index(:persons, [:name])"
         end)
       end)
     end

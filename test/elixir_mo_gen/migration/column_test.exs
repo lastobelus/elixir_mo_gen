@@ -27,12 +27,12 @@ defmodule ElixirMoGen.Migration.ColumnTest do
                 }}
     end
 
-    test "errors if arg specifies different name then passed name" do
+    test "errors when column name is blank and only a type is specified" do
       assert Column.parse_single_column(
-               "bob:float",
-               "size"
+               ":float",
+               ""
              ) ==
-               {:error, "column `size` parsed from migration name does not match `bob`"}
+               {:error, "column name is missing"}
     end
 
     test "errors when type is unknown" do
@@ -40,7 +40,7 @@ defmodule ElixirMoGen.Migration.ColumnTest do
                ":bogus",
                "size"
              ) ==
-               {:error, "invalid type `bogus` for column `size`"}
+               {:error, "invalid option/type `bogus` for column `size`"}
     end
 
     test "handles type aliases" do

@@ -26,13 +26,14 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     # column migrations
     comment: :string,
     default: :string,
-    required: :boolean,
     null: :boolean,
     primary_key: :boolean,
     size: :integer,
     scale: :integer,
     precision: :integer,
     index: :boolean,
+    uniq: :boolean,
+    references: :string,
 
     # index migrations
     concurrently: :boolean,
@@ -66,10 +67,12 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   ]
 
   @env_opts [
-    prefix: "MO_GEN_MIGRATION_PREFIX",
-    migrations_path: "MO_GEN_MIGRATION_PATH",
-    quiet: "MO_GEN_MIGRATION_QUIET",
-    index: "MO_GEN_MIGRATION_INDEX"
+    prefix: [MO_GEN_MIGRATION_PREFIX: nil],
+    migrations_path: [MO_GEN_MIGRATION_PATH: nil],
+    quiet: [MO_GEN_MIGRATION_QUIET: "false"],
+    index: [MO_GEN_MIGRATION_INDEX: "true"],
+    null: [MO_GEN_MIGRATION_ALLOW_NULL: nil],
+    uniq: [MO_GEN_MIGRATION_UNIQUE: "true"],
   ]
 
   @column_opts [
@@ -77,6 +80,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     :default,
     :required,
     :null,
+    :unique,
     :primary_key,
     :size,
     :scale,
@@ -85,10 +89,16 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   ]
 
   @index_opts [
+    :unique,
+    :name,
     :concurrently,
+    :using,
+    :prefix,
     :where,
     :include,
-    :using
+    :nulls_distinct,
+    :only,
+    :comment
   ]
 
   @migration_types %{
@@ -104,7 +114,8 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     add_columns: [
       "add_COLUMNNAME_to_TABLENAME :TYPE",
       "# type defaults to string if ommitted",
-      "add_to_TABLENAME COLUMNNAME:TYPE COLUMNNAME:TYPE ..."],
+      "add_to_TABLENAME COLUMNNAME:TYPE COLUMNNAME:TYPE ..."
+    ],
     add_index: ["add_OPTIONALINDEXNAME_index_to_TABLENAME [COLUMNONE,COLUMN2]"],
     add_unique_index: ["add_OPTIONALINDEXNAME_unique_index_to_TABLENAME"],
     remove_column: [
@@ -150,12 +161,6 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     [migration_name | args] = args
     repos = Mix.EctoCopy.parse_repo(Keyword.get_values(opts, :repo))
 
-    # IO.puts("opts: #{inspect(opts)}")
-    # IO.puts("args: #{inspect(args)}")
-    # IO.puts("migration_name: #{inspect(migration_name)}")
-    # IO.puts("Migration.migration_module: #{inspect(Migration.migration_module())}")
-    # IO.puts("repos: #{inspect(repos)}")
-
     Enum.map(repos, fn repo ->
       migration_name = Macro.underscore(migration_name)
 
@@ -164,19 +169,17 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
           raise_with_help("unable to interpret migration `#{migration_name}`", :unknown_cmd)
 
         {cmd, migration} ->
-          # IO.puts("cmd: #{inspect(cmd)}")
-          # IO.puts("migration: #{inspect(migration)}")
 
           migration =
             migration
             |> add_migration_opts(opts)
             |> add_cmd_opts(cmd, args, opts)
-            |> setup_file_path(migration_name, repo)
+            |> finalize_migration_name(cmd, migration_name)
+            |> setup_file_path(repo)
             |> atomize_values([:table, :prefix])
 
-          # IO.puts("running #{inspect(cmd)}")
-          # IO.inspect(migration, label: "migration")
-          generate_migration(migration_name, repo, migration, cmd, args, opts)
+          # dbg(migration)
+          generate_migration(repo, migration, cmd, args, opts)
       end
     end)
   end
@@ -186,7 +189,9 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
       cond do
         Map.has_key?(acc, k) ->
           Map.put(acc, k, String.to_atom(acc[k]))
-        true -> acc
+
+        true ->
+          acc
       end
     end)
   end
@@ -194,16 +199,17 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   defp parse_opts!(args) do
     {opts, parsed} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
 
-    merged_opts = opts_from_env()
-    |> Keyword.merge(@default_opts)
-    |> Keyword.merge(opts)
+    merged_opts =
+      opts_from_env()
+      |> Keyword.merge(@default_opts)
+      |> Keyword.merge(opts)
 
     {merged_opts, parsed}
   end
 
   defp opts_from_env do
-    Enum.map(@env_opts, fn {opt, env} ->
-      {opt, coerced_env_value(opt, System.get_env(env))}
+    Enum.map(@env_opts, fn {opt, [{env, default}]} ->
+      {opt, coerced_env_value(opt, System.get_env(Atom.to_string(env), default))}
     end)
     |> Enum.reject(fn {_, v} -> is_nil(v) end)
   end
@@ -219,9 +225,12 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
           nil -> nil
           _ -> raise_with_help("invalid value for #{@env_opts[opt]}: #{val}")
         end
-        _ -> val
+
+      _ ->
+        val
     end
   end
+
   def raise_with_help(msg) do
     raise_with_help(msg, :general)
   end
@@ -339,30 +348,72 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
         migration
         |> add_columns(columns, opts)
 
-      1 ->
-        case Column.parse_single_column(List.first(args), migration[:column]) do
-          {:ok, columns} ->
-            migration
-            |> add_columns(columns, opts)
-
-          {:error, msg} ->
-            raise_with_help(msg, :add_columns)
-        end
-
       _ ->
-        raise_with_help("too many arguments for `add_COLUMN_to_TABLE`", :add_columns)
+        Enum.reduce(args, migration, fn arg, migration ->
+          {column, migration} = Map.pop(migration, :column)
+
+          case Column.parse_single_column(arg, column) do
+            {:ok, columns} ->
+              migration
+              |> add_columns(columns, opts)
+
+            {:error, msg} ->
+              raise_with_help(msg, :add_columns)
+          end
+        end)
     end
   end
 
+  defp add_cmd_opts(migration, :add_index, args, opts) do
+
+  end
+
   defp add_columns(migration, columns, opts) do
-    Map.put(migration, :columns, add_column_opts(columns, opts))
+    migration = Map.put_new(migration, :columns, %{})
+
+    new_opts = add_column_opts(columns, opts)
+    new_columns = Map.merge(migration[:columns], new_opts)
+    migration
+    |> Map.put(:columns, new_columns)
   end
 
   defp add_column_opts(columns, opts) do
-    column_opts = Keyword.take(opts, @column_opts)
+    column_opts = Enum.into(Keyword.take(opts, @column_opts), %{})
+
     Enum.map(columns, fn {column, spec} ->
-      {column, Enum.into(column_opts, spec)}
+      {column, Map.merge(column_opts, spec)}
     end)
+    |> Map.new()
+  end
+
+  def finalize_migration_name(migration, :add_columns, migration_name) do
+    name =
+      cond do
+        migration_name =~ ~r/^add_to_/ ->
+          {and_column, front_columns} =
+            migration[:columns]
+            |> Map.keys()
+            |> Enum.map(&Atom.to_string/1)
+            |> List.pop_at(-1)
+
+          cond do
+            length(front_columns) == 0 ->
+              "add_#{and_column}_to_#{migration[:table]}"
+
+            true ->
+              columns_part = Enum.join(front_columns, "_") <> "_and_" <> and_column
+              "add_#{columns_part}_to_#{migration[:table]}"
+          end
+
+        true ->
+          migration_name
+      end
+
+    Map.put(migration, :name, name)
+  end
+
+  def finalize_migration_name(migration, _cmd, migration_name) do
+    Map.put(migration, :name, migration_name)
   end
 
   def maybe_run_migration?(file, repo) do
@@ -371,7 +422,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     end
   end
 
-  def setup_file_path(migration, name, repo) do
+  def setup_file_path(migration, repo) do
     # IO.puts("setup_file_path")
     # IO.inspect(migration, label: "migration")
     # IO.inspect(name, label: "name")
@@ -379,30 +430,29 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     path =
       migration[:migrations_path] || Path.join(Mix.EctoCopy.source_repo_priv(repo), "migrations")
 
-    base_name = "#{name}.exs"
+    base_name = "#{migration[:name]}.exs"
 
     migration
     |> Map.put(:path, path)
     |> Map.put(:base_name, base_name)
   end
 
-  def generate_migration(name, repo, migration, cmd, args, opts) do
+  def generate_migration(repo, migration, cmd, args, opts) do
     Mix.EctoCopy.ensure_repo(repo, args)
     path = opts[:migrations_path] || Path.join(Mix.EctoCopy.source_repo_priv(repo), "migrations")
-    base_name = "#{ElixirMoGen.Naming.underscore(name)}.exs"
-    file = Path.join(path, "#{timestamp()}_#{base_name}")
+    file = Path.join(path, "#{timestamp()}_#{migration.base_name}")
     unless File.dir?(path), do: create_directory(path)
 
-    fuzzy_path = Path.join(path, "*_#{base_name}")
+    fuzzy_path = Path.join(path, "*_#{migration.base_name}")
 
     if Path.wildcard(fuzzy_path) != [] do
       Mix.raise(
-        "migration can't be created, there is already a migration file with name #{name}."
+        "migration can't be created, there is already a migration file with name #{migration.name}."
       )
     end
 
     assigns = [
-      mod: Module.concat([repo, Migrations, ElixirMoGen.Naming.camelize(name)]),
+      mod: Module.concat([repo, Migrations, ElixirMoGen.Naming.camelize(migration.name)]),
       migration: add_changes(migration, cmd)
     ]
 
@@ -414,6 +464,10 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
   end
 
   defp add_changes(migration, :add_columns) do
+    Map.put(migration, :change, Migration.add_columns_template(migration))
+  end
+
+  defp add_changes(migration, :add_index) do
     Map.put(migration, :change, Migration.add_columns_template(migration))
   end
 

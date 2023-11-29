@@ -8,7 +8,6 @@ defmodule ElixirMoGen.Migration do
     end
   end
 
-
   def column_options_template(spec) do
     {comment, spec} = Map.pop(spec, :comment)
     {_, spec} = Map.split(spec, [:type, :index])
@@ -47,21 +46,29 @@ defmodule ElixirMoGen.Migration do
     cond do
       Map.has_key?(migration, :prefix) ->
         ", prefix: #{inspect(migration.prefix)}"
-      true -> ""
+
+      true ->
+        ""
     end
+  end
+
+  defp normalize_type(type) when is_atom(type) do
+    inspect(type)
+  end
+
+  defp normalize_type(type) do
+    type
   end
 
   embed_template(:add_column, """
       alter table(<%= inspect @migration.table %><%= maybe_prefix?(@migration) %>) do<%= for {name, spec} <- @migration.columns do %>
-        add <%= inspect name %>, <%= inspect spec.type %><%= column_options_template(spec) %><% end %>
+        add <%= inspect name %>, <%= normalize_type(spec.type) %><%= column_options_template(spec) %><% end %>
       end<%= if has_index?(@migration) do %><%= indexes_template(migration: @migration) %><% end %>
   """)
-
 
   embed_template(:indexes, """
 
   <%= for {name, spec} <- @migration.columns do %><%= if spec.index do %>
       create index(<%= inspect @migration.table %>, [<%= inspect name %>]<%= maybe_prefix?(@migration) %>)<% end %><% end %>\
   """)
-
 end
