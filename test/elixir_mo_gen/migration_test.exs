@@ -55,7 +55,10 @@ defmodule ElixirMoGen.MigrationTest do
 
     test "adds multiple columns" do
       assert Migration.add_columns_template(%{
-               columns: %{name: %{type: :string, index: false}, size: %{type: :float, index: false}},
+               columns: %{
+                 name: %{type: :string, index: false},
+                 size: %{type: :float, index: false}
+               },
                table: :widgets
              }) =~
                """

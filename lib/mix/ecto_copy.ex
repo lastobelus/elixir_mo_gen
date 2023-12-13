@@ -14,7 +14,7 @@ defmodule Mix.EctoCopy do
     parse_repo(repos, [])
   end
 
-  defp parse_repo([repo | t], acc)  do
+  defp parse_repo([repo | t], acc) do
     parse_repo(t, [Module.concat([repo]) | acc])
   end
 

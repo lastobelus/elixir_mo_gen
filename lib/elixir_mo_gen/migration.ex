@@ -1,7 +1,7 @@
 defmodule ElixirMoGen.Migration do
-@moduledoc """
-This module provides functions for generating migrations.
-"""
+  @moduledoc """
+  This module provides functions for generating migrations.
+  """
 
   import Mix.Generator
 
@@ -23,6 +23,7 @@ This module provides functions for generating migrations.
   defp maybe_add_options(spec) when map_size(spec) == 0 do
     ""
   end
+
   defp maybe_add_options(spec) do
     ", " <> to_opts(spec)
   end

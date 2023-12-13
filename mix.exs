@@ -30,7 +30,7 @@ defmodule ElixirMoGen.MixProject do
       """,
       preferred_cli_env: [
         "test.watch": :test
-      ],
+      ]
     ]
   end
 

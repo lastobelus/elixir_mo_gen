@@ -1,7 +1,7 @@
 defmodule ElixirMoGen.Migration.Column do
-@moduledoc """
-Parses and validates add column(s) migrations
-"""
+  @moduledoc """
+  Parses and validates add column(s) migrations
+  """
   @column_types [
     :integer,
     :float,

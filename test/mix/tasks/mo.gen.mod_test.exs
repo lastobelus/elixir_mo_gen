@@ -41,7 +41,6 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
       assert_file("test/test_app/some/namespace/new_module_test.exs", fn file ->
         assert file =~ "defmodule TestApp.Some.Namespace.NewModuleTest do"
       end)
-
     end)
   end
 
@@ -195,7 +194,6 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
   end
 
   describe "phoenix" do
-
     test "does not add standard ignore paths to namespace", config do
       in_tmp_phx_project(config.test, fn ->
         Gen.Mod.run(~w(web/controllers/new_controller -q))
@@ -243,7 +241,6 @@ defmodule Mix.Tasks.Mo.Gen.ModTest do
   # sometimes fails with
   #  Failed to restore deps/telemetry/_build/prod/lib/.rebar3/rebar_compiler_erl/source.dag
   describe "generated tests" do
-
     test "the generated test runs and flunks", config do
       in_test_app(config.tmp_dir, fn ->
         Gen.Mod.run(~w(some/namespace/new_module -q))

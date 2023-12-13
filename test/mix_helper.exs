@@ -214,7 +214,8 @@ defmodule MixHelper do
 
   def assert_file_compiles(file) do
     assert File.regular?(file), "Expected #{file} to exist, but does not"
-    msgid = Ecto.UUID.generate
+    msgid = Ecto.UUID.generate()
+
     output =
       capture_io(:stderr, fn ->
         try do
@@ -224,23 +225,24 @@ defmodule MixHelper do
         end
       end)
 
-      receive do
-        {^msgid, err} ->
-          flunk """
-          Expected #{err.file}
-          ```
-          #{File.read!(file)}```
-          to compile, but #{err.description}
+    receive do
+      {^msgid, err} ->
+        flunk("""
+        Expected #{err.file}
+        ```
+        #{File.read!(file)}```
+        to compile, but #{err.description}
 
-          #{output}
-          """
-      after
-        0 -> file
-      end
+        #{output}
+        """)
+    after
+      0 -> file
+    end
   end
 
   def assert_code_compiles(code, path \\ "") do
-    msgid = Ecto.UUID.generate
+    msgid = Ecto.UUID.generate()
+
     output =
       capture_io(:stderr, fn ->
         try do
@@ -251,19 +253,19 @@ defmodule MixHelper do
         end
       end)
 
-      receive do
-        {^msgid, err} ->
-          flunk """
-          Expected #{path}
-          ```
-          #{code}```
-          to compile, but #{err.description}
+    receive do
+      {^msgid, err} ->
+        flunk("""
+        Expected #{path}
+        ```
+        #{code}```
+        to compile, but #{err.description}
 
-          #{output}
-          """
-        after
-          0 -> nil
-        end
+        #{output}
+        """)
+    after
+      0 -> nil
+    end
   end
 
   def with_generator_env(new_env, fun) do
