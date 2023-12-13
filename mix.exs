@@ -27,7 +27,10 @@ defmodule ElixirMoGen.MixProject do
 
       - `mix mo.gen.mod` task to add a module to a project along with an associated test,
       that is aware of Phoenix conventions.
-      """
+      """,
+      preferred_cli_env: [
+        "test.watch": :test
+      ],
     ]
   end
 
@@ -41,9 +44,11 @@ defmodule ElixirMoGen.MixProject do
   defp deps do
     [
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ecto_sql, "~> 3.10", only: [:dev, :test]},
       {:phoenix, "~> 1.7", only: [:dev, :test]},
-      {:postgrex, ">= 0.0.0", only: [:dev, :test]}
+      {:postgrex, ">= 0.0.0", only: [:dev, :test]},
+      {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false}
     ]
   end
 end
