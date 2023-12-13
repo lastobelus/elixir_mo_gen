@@ -53,7 +53,8 @@ defmodule ElixirMoGen.Naming do
   end
 
   @doc """
-  Converts a string to underscore case.
+  Converts a string to underscore case, first converting any hyphens
+  to underscores.
 
   ## Examples
 
@@ -69,7 +70,8 @@ defmodule ElixirMoGen.Naming do
   """
   @spec underscore(String.t()) :: String.t()
 
-  def underscore(value), do: Macro.underscore(value)
+  def underscore(value), do: Macro.underscore(dedasherize(value))
+  defp dedasherize(str), do: String.replace(str, "-", "_")
 
   defp to_lower_char(char) when char in ?A..?Z, do: char + 32
   defp to_lower_char(char), do: char
