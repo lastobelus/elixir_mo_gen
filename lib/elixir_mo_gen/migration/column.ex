@@ -1,4 +1,7 @@
 defmodule ElixirMoGen.Migration.Column do
+@moduledoc """
+Parses and validates add column(s) migrations
+"""
   @column_types [
     :integer,
     :float,
@@ -38,13 +41,6 @@ defmodule ElixirMoGen.Migration.Column do
     :primary_key
   ]
 
-  @index_switches [
-    :unique,
-    :index,
-    :null,
-    :primary_key
-  ]
-
   @column_switches_aliases %{
     u: :unique,
     uniq: :unique,
@@ -57,12 +53,10 @@ defmodule ElixirMoGen.Migration.Column do
     name = name && String.trim(name)
     column = least_blank(String.trim(column), name) |> Macro.underscore()
 
-    cond do
-      blank?(column) ->
-        {:error, "column name is missing"}
-
-      true ->
-        parse_column(column, opts)
+    if blank?(column) do
+      {:error, "column name is missing"}
+    else
+      parse_column(column, opts)
     end
   end
 
@@ -87,13 +81,15 @@ defmodule ElixirMoGen.Migration.Column do
       end
 
     try do
-        spec = Enum.reduce(args, spec, fn arg, acc ->
-          [arg|value] = String.split(arg, "{")
+      spec =
+        Enum.reduce(args, spec, fn arg, acc ->
+          [arg | value] = String.split(arg, "{")
           value = List.last(value) || ""
           arg_spec = opt_to_arg(arg, String.trim(value, "}"))
           Map.merge(acc, arg_spec)
         end)
-        {:ok, %{String.to_atom(column) => spec}}
+
+      {:ok, %{String.to_atom(column) => spec}}
     rescue
       e ->
         {:error, "#{e.message} for column `#{column}`"}
@@ -112,9 +108,10 @@ defmodule ElixirMoGen.Migration.Column do
   end
 
   defp least_blank(a, b) do
-    cond do
-      blank?(a) -> String.trim(b)
-      true -> String.trim(a)
+    if blank?(a) do
+      String.trim(b)
+    else
+      String.trim(a)
     end
   end
 

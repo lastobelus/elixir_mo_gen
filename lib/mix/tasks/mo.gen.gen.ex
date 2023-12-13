@@ -57,12 +57,10 @@ defmodule Mix.Tasks.Mo.Gen.Gen do
 
     ignore_paths = ElixirMoGen.get_ignore_paths(opts[:ignore_paths], opts[:phoenix])
 
-    cond do
-      opts[:clean] ->
-        Enum.each(modules, fn module -> clean_module(module, ignore_paths, opts) end)
-
-      true ->
-        Enum.each(modules, fn module -> generate_module(module, ignore_paths, opts) end)
+    if opts[:clean] do
+      Enum.each(modules, fn module -> clean_module(module, ignore_paths, opts) end)
+    else
+      Enum.each(modules, fn module -> generate_module(module, ignore_paths, opts) end)
     end
   end
 

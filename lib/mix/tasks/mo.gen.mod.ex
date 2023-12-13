@@ -208,18 +208,21 @@ defmodule Mix.Tasks.Mo.Gen.Mod do
         use_alias = Map.get(@use_aliases, use_alias, use_alias)
 
         if use_alias do
-          case ElixirMoGen.phoenix_web_macros() do
-            {:ok, _macros} ->
-              {module_name, use_alias}
-
-            {:error, msg} ->
-              ElixirMoGen.warn("#{module}", "#{msg} using `#{use_alias}`", opts)
-              {module_name, use_alias}
-          end
+          maybe_warn_about_web_module(module, use_alias, opts)
         end
+
+        {module_name, use_alias}
 
       _ ->
         raise "`#{module}` -- can only add one use macro"
+    end
+  end
+
+  def maybe_warn_about_web_module(module, use_alias, opts) do
+    {result, msg} = ElixirMoGen.phoenix_web_macros()
+
+    if result == :error do
+      ElixirMoGen.warn("#{module}", "#{msg} using `#{use_alias}`", opts)
     end
   end
 end

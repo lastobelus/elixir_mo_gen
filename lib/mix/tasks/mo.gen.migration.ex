@@ -72,7 +72,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     quiet: [MO_GEN_MIGRATION_QUIET: "false"],
     index: [MO_GEN_MIGRATION_INDEX: "true"],
     null: [MO_GEN_MIGRATION_ALLOW_NULL: nil],
-    uniq: [MO_GEN_MIGRATION_UNIQUE: "true"],
+    uniq: [MO_GEN_MIGRATION_UNIQUE: "true"]
   ]
 
   @column_opts [
@@ -169,7 +169,6 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
           raise_with_help("unable to interpret migration `#{migration_name}`", :unknown_cmd)
 
         {cmd, migration} ->
-
           migration =
             migration
             |> add_migration_opts(opts)
@@ -178,7 +177,6 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
             |> setup_file_path(repo)
             |> atomize_values([:table, :prefix])
 
-          # dbg(migration)
           generate_migration(repo, migration, cmd, args, opts)
       end
     end)
@@ -186,12 +184,10 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
 
   defp atomize_values(migration, keys) do
     Enum.reduce(keys, migration, fn k, acc ->
-      cond do
-        Map.has_key?(acc, k) ->
-          Map.put(acc, k, String.to_atom(acc[k]))
-
-        true ->
-          acc
+      if Map.has_key?(acc, k) do
+        Map.put(acc, k, String.to_atom(acc[k]))
+      else
+        acc
       end
     end)
   end
@@ -286,10 +282,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
       |> Enum.max_by(&String.length/1)
       |> String.length()
 
-    Enum.join(
-      Enum.map(cmds, fn cmd -> migration_help(cmd, indent, cmd_indent_size + 3) end),
-      "\n\n"
-    )
+    Enum.map_join(cmds, "\n\n", fn cmd -> migration_help(cmd, indent, cmd_indent_size + 3) end)
   end
 
   def migration_help(cmd, indent) do
@@ -323,7 +316,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
       IO.ANSI.color(@cli_theme_fg) <> text <> IO.ANSI.reset()
   end
 
-  def parse_migration_type(migration_name, args) do
+  def parse_migration_type(migration_name, _args) do
     Enum.find_value(@migration_types, fn {cmd, regex} ->
       case Regex.named_captures(regex, migration_name) do
         nil -> false
@@ -340,32 +333,29 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
     Enum.into(Keyword.take(opts, [:comment, :prefix]), migration)
   end
 
-  defp add_cmd_opts(migration, :add_columns, args, opts) do
-    case length(args) do
-      0 ->
-        columns = Column.single_column_from_migration(migration)
+  defp add_cmd_opts(migration, :add_columns, [], opts) do
+    columns = Column.single_column_from_migration(migration)
 
-        migration
-        |> add_columns(columns, opts)
-
-      _ ->
-        Enum.reduce(args, migration, fn arg, migration ->
-          {column, migration} = Map.pop(migration, :column)
-
-          case Column.parse_single_column(arg, column) do
-            {:ok, columns} ->
-              migration
-              |> add_columns(columns, opts)
-
-            {:error, msg} ->
-              raise_with_help(msg, :add_columns)
-          end
-        end)
-    end
+    migration
+    |> add_columns(columns, opts)
   end
 
-  defp add_cmd_opts(migration, :add_index, args, opts) do
+  defp add_cmd_opts(migration, :add_columns, args, opts) do
+    Enum.reduce(args, migration, fn arg, migration ->
+      {column, migration} = Map.pop(migration, :column)
 
+      case Column.parse_single_column(arg, column) do
+        {:ok, columns} ->
+          migration
+          |> add_columns(columns, opts)
+
+        {:error, msg} ->
+          raise_with_help(msg, :add_columns)
+      end
+    end)
+  end
+
+  defp add_cmd_opts(_migration, :add_index, _args, _opts) do
   end
 
   defp add_columns(migration, columns, opts) do
@@ -373,6 +363,7 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
 
     new_opts = add_column_opts(columns, opts)
     new_columns = Map.merge(migration[:columns], new_opts)
+
     migration
     |> Map.put(:columns, new_columns)
   end
@@ -388,25 +379,21 @@ defmodule Mix.Tasks.Mo.Gen.Migration do
 
   def finalize_migration_name(migration, :add_columns, migration_name) do
     name =
-      cond do
-        migration_name =~ ~r/^add_to_/ ->
-          {and_column, front_columns} =
-            migration[:columns]
-            |> Map.keys()
-            |> Enum.map(&Atom.to_string/1)
-            |> List.pop_at(-1)
+      if migration_name =~ ~r/^add_to_/ do
+        {and_column, front_columns} =
+          migration[:columns]
+          |> Map.keys()
+          |> Enum.map(&Atom.to_string/1)
+          |> List.pop_at(-1)
 
-          cond do
-            length(front_columns) == 0 ->
-              "add_#{and_column}_to_#{migration[:table]}"
-
-            true ->
-              columns_part = Enum.join(front_columns, "_") <> "_and_" <> and_column
-              "add_#{columns_part}_to_#{migration[:table]}"
-          end
-
-        true ->
-          migration_name
+        if Enum.empty?(front_columns) do
+          "add_#{and_column}_to_#{migration[:table]}"
+        else
+          columns_part = Enum.join(front_columns, "_") <> "_and_" <> and_column
+          "add_#{columns_part}_to_#{migration[:table]}"
+        end
+      else
+        migration_name
       end
 
     Map.put(migration, :name, name)

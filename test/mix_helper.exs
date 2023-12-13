@@ -34,8 +34,6 @@ defmodule MixHelper do
 
   def in_tmp(which, function) do
     path = Path.join([tmp_path(), random_string(10), to_string(which)])
-    IO.puts("\n-------------- in_tmp '#{which}' START-------------")
-    IO.inspect(path, label: "in_tmp: path")
 
     try do
       File.rm_rf!(path)
@@ -43,14 +41,10 @@ defmodule MixHelper do
       File.cd!(path, function)
     rescue
       e ->
-        IO.puts("MixHelper.in_tmp.rescue")
         reraise e, __STACKTRACE__
     after
-      IO.puts("after running in_tmp, removing #{path}")
       File.rm_rf!(path)
     end
-
-    IO.puts("\n-------------- in_tmp '#{which}' END-------------")
   end
 
   def in_tmp_phx_project(test, func, deps \\ [:phoenix]) do

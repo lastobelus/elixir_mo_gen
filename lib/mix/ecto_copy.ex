@@ -3,7 +3,7 @@ defmodule Mix.EctoCopy do
   Conveniences for writing Ecto related Mix tasks.
   """
 
-  # region [ copied from https://github.com/elixir-ecto/ecto@lib/mix/ecto.ex ]
+  # region [ copied from https://github.com/elixir-ecto/ecto/blob/master/lib/mix/ecto.ex ]
 
   @doc """
   Parses the repository option from the given command line args list.
@@ -23,14 +23,10 @@ defmodule Mix.EctoCopy do
 
     apps =
       if apps_paths = Mix.Project.apps_paths() do
-        # TODO: Use the proper ordering from Mix.Project.deps_apps
-        # when we depend on Elixir v1.11+.
         apps_paths |> Map.keys() |> Enum.sort()
       else
         [Mix.Project.config()[:app]]
       end
-
-    dbg(apps)
 
     apps
     |> Enum.flat_map(fn app ->
@@ -67,7 +63,6 @@ defmodule Mix.EctoCopy do
     # Do not pass the --force switch used by some tasks downstream
     args = List.delete(args, "--force")
 
-    # TODO: Use only app.config when we depend on Elixir v1.11+.
     if Code.ensure_loaded?(Mix.Tasks.App.Config) do
       Mix.Task.run("app.config", args)
     else

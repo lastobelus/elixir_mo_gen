@@ -1,4 +1,8 @@
 defmodule ElixirMoGen.Migration do
+@moduledoc """
+This module provides functions for generating migrations.
+"""
+
   import Mix.Generator
 
   def migration_module do
@@ -12,25 +16,24 @@ defmodule ElixirMoGen.Migration do
     {comment, spec} = Map.pop(spec, :comment)
     {_, spec} = Map.split(spec, [:type, :index])
 
-    s =
-      cond do
-        Enum.empty?(spec) -> ""
-        true -> ", " <> to_opts(spec)
-      end
-
-    cond do
-      comment -> s <> "   # #{comment}"
-      true -> s
-    end
+    maybe_add_options(spec)
+    |> maybe_add_comment(comment)
   end
 
+  defp maybe_add_options(spec) when map_size(spec) == 0 do
+    ""
+  end
+  defp maybe_add_options(spec) do
+    ", " <> to_opts(spec)
+  end
+
+  def maybe_add_comment(s, nil), do: s
+  def maybe_add_comment(s, comment), do: s <> "   # #{comment}"
+
   defp to_opts(spec) do
-    Enum.join(
-      Enum.map(spec, fn {k, v} ->
-        "#{k}: #{v}"
-      end),
-      ", "
-    )
+    Enum.map_join(spec, ", ", fn {k, v} ->
+      "#{k}: #{v}"
+    end)
   end
 
   # I want to be able to test this directly, at least as I'm developing
@@ -43,12 +46,10 @@ defmodule ElixirMoGen.Migration do
   end
 
   defp maybe_prefix?(migration) do
-    cond do
-      Map.has_key?(migration, :prefix) ->
-        ", prefix: #{inspect(migration.prefix)}"
-
-      true ->
-        ""
+    if Map.has_key?(migration, :prefix) do
+      ", prefix: #{inspect(migration.prefix)}"
+    else
+      ""
     end
   end
 

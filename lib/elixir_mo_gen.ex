@@ -50,9 +50,10 @@ defmodule ElixirMoGen do
     web_module = web_module(base())
 
     use_statements =
-      cond do
-        is_nil(use_macro) -> []
-        true -> ["use #{inspect(web_module)}, :#{use_macro}"]
+      if is_nil(use_macro) do
+        []
+      else
+        ["use #{inspect(web_module)}, :#{use_macro}"]
       end
 
     module =
@@ -195,27 +196,24 @@ defmodule ElixirMoGen do
   defp camelize_path_part(part) do
     part
     |> String.split(".")
-    |> Enum.map(&ElixirMoGen.Naming.camelize/1)
-    |> Enum.join(".")
+    |> Enum.map_join(".", &ElixirMoGen.Naming.camelize/1)
   end
 
   def maybe_once_removed_alias?(module_name, namespace_parts) do
-    cond do
-      String.contains?(inspect(module_name), ".") ->
-        name_parts =
-          module_name
-          |> inspect()
-          |> String.split(".")
+    if String.contains?(inspect(module_name), ".") do
+      name_parts =
+        module_name
+        |> inspect()
+        |> String.split(".")
 
-        {alias_parts, use_parts} = Enum.split(name_parts, length(name_parts) - 1)
+      {alias_parts, use_parts} = Enum.split(name_parts, length(name_parts) - 1)
 
-        %{
-          alias: path_parts_to_module(namespace_parts ++ alias_parts, []),
-          use: path_parts_to_module(Enum.slice(alias_parts, -1..-1) ++ use_parts, [])
-        }
-
-      true ->
-        %{alias: module_name, use: module_name}
+      %{
+        alias: path_parts_to_module(namespace_parts ++ alias_parts, []),
+        use: path_parts_to_module(Enum.slice(alias_parts, -1..-1) ++ use_parts, [])
+      }
+    else
+      %{alias: module_name, use: module_name}
     end
   end
 
@@ -380,12 +378,10 @@ defmodule ElixirMoGen do
   def phoenix_web_macros do
     web = web_module(base())
 
-    cond do
-      module_loaded?(web) ->
-        {:ok, web_module(base()).__info__(:functions)}
-
-      true ->
-        {:error, "web module `#{inspect(web)}` not available"}
+    if module_loaded?(web) do
+      {:ok, web_module(base()).__info__(:functions)}
+    else
+      {:error, "web module `#{inspect(web)}` not available"}
     end
   end
 
